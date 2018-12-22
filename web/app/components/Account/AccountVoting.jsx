@@ -1,28 +1,37 @@
 import React from "react";
 import Immutable from "immutable";
-import {PropTypes} from "react";
 import Translate from "react-translate-component";
-import AutocompleteInput from "../Forms/AutocompleteInput";
 import counterpart from "counterpart";
-import LoadingIndicator from "../LoadingIndicator";
-import AccountSelector from "./AccountSelector";
-import utils from "common/utils";
-import WalletApi from "rpc_api/WalletApi";
-import WalletDb from "stores/WalletDb.js"
-import ChainStore from "api/ChainStore";
-import validation from "common/validation"
-import AccountImage from "./AccountImage";
+import accountUtils from "common/account_utils";
+import WalletApi from "api/WalletApi";
+import WalletDb from "stores/WalletDb.js";
+import {ChainStore, FetchChainObjects} from "graphenejs-lib/es";
 import WorkerApproval from "./WorkerApproval";
-import {FetchChainObjects} from "api/ChainStore";
 import AccountVotingProxy from "./AccountVotingProxy";
 import AccountsList from "./AccountsList";
 import HelpContent from "../Utility/HelpContent";
 import cnames from "classnames";
-import Tabs, {Tab} from "../Utility/Tabs";
+import {Tabs, Tab} from "../Utility/Tabs";
+import FormattedAsset from "../Utility/FormattedAsset";
+import BindToChainState from "../Utility/BindToChainState";
+import ChainTypes from "../Utility/ChainTypes";
+import {EquivalentValueComponent} from "../Utility/EquivalentValueComponent";
 
-let wallet_api = new WalletApi()
+let wallet_api = new WalletApi();
 
 class AccountVoting extends React.Component {
+
+    static propTypes = {
+        initialBudget: ChainTypes.ChainObject.isRequired,
+        globalObject: ChainTypes.ChainObject.isRequired,
+        dynamicGlobal: ChainTypes.ChainObject.isRequired
+    };
+
+    static defaultProps = {
+        initialBudget: "2.13.1",
+        globalObject: "2.0.0",
+        dynamicGlobal: "2.1.0"
+    };
 
     constructor(props) {
         super(props);
@@ -30,18 +39,35 @@ class AccountVoting extends React.Component {
             proxy_account_id: "",//"1.2.16",
             witnesses: null,
             committee: null,
-            vote_ids: Immutable.Set()
+            vote_ids: Immutable.Set(),
+            lastBudgetObject: null,
+            showExpired: false
         };
         this.onProxyAccountChange = this.onProxyAccountChange.bind(this);
         this.onPublish = this.onPublish.bind(this);
         this.onReset = this.onReset.bind(this);
+        this._onUpdate = this._onUpdate.bind(this);
+    }
+
+    componentWillUnmount() {
+        ChainStore.unsubscribe(this._onUpdate);
+    }
+
+    _onUpdate() {
+        this.forceUpdate();
     }
 
     updateAccountData(account) {
-        let options = account.get('options');
-        let proxy_account_id = options.get('voting_account');
-        if(proxy_account_id === "1.2.5" ) proxy_account_id = "";
-        let votes = options.get('votes');
+        let options = account.get("options");
+        let proxy_account_id = options.get("voting_account");
+        let proxyAccount = ChainStore.getAccount(proxy_account_id);
+        let proxy_account_name = proxyAccount ? proxyAccount.get("name") : "";
+        if (proxy_account_id === "1.2.5" ) {
+            proxy_account_id = "";
+            proxy_account_name = "";
+        }
+
+        let votes = options.get("votes");
         let vote_ids = votes.toArray();
         let vids = Immutable.Set( vote_ids );
         ChainStore.getObjectsByVoteIds(vote_ids);
@@ -63,6 +89,7 @@ class AccountVoting extends React.Component {
             });
             let state = {
                 proxy_account_id: proxy_account_id,
+                proxy_account_name: proxy_account_name,
                 witnesses: witnesses,
                 committee: committee,
                 workers: workers,
@@ -87,32 +114,81 @@ class AccountVoting extends React.Component {
 
     componentWillMount() {
         this.updateAccountData(this.props.account);
+        accountUtils.getFinalFeeAsset(this.props.account, "account_update");
+        this.getBudgetObject();
+        ChainStore.subscribe(this._onUpdate);
+    }
+
+    componentDidMount() {
+        this.getBudgetObject();
     }
 
     componentWillReceiveProps(nextProps) {
-        if (nextProps.account !== this.props.account) this.updateAccountData(nextProps.account);
+        if (nextProps.account !== this.props.account) {
+            this.updateAccountData(nextProps.account);
+        }
+        this.getBudgetObject();
     }
 
     onPublish() {
         let updated_account = this.props.account.toJS();
-        updated_account.account = updated_account.id;
-        updated_account.new_options = updated_account.options;
+        let updateObject = {account: updated_account.id};
+        let new_options = {memo_key: updated_account.options.memo_key};
+        // updated_account.new_options = updated_account.options;
         let new_proxy_id = this.state.proxy_account_id;
-        updated_account.new_options.voting_account = new_proxy_id ? new_proxy_id : "1.2.5";
-        updated_account.new_options.num_witness = this.state.witnesses.size;
-        updated_account.new_options.num_committee = this.state.committee.size;
-        console.log( "vote_ids: ", this.state.vote_ids.toJS() );
+        new_options.voting_account = new_proxy_id ? new_proxy_id : "1.2.5";
+        new_options.num_witness = this.state.witnesses.size;
+        new_options.num_committee = this.state.committee.size;
+
+        updateObject.new_options = new_options;
+        // Set fee asset
+        updateObject.fee = {
+            amount: 0,
+            asset_id: accountUtils.getFinalFeeAsset(updated_account.id, "account_update")
+        };
+
+        // Remove votes for expired workers
+        let {vote_ids} = this.state;
+        let workers = this._getWorkerArray();
+        let now = new Date();
+
+        function removeVote(list, vote) {
+            if (list.includes(vote)) {
+                list = list.delete(vote);
+            }
+            return list;
+        }
+
+        workers.forEach(worker => {
+            if (worker) {
+                if (new Date(worker.get("work_end_date")) <= now) {
+                    vote_ids = removeVote(vote_ids, worker.get("vote_for"));
+                }
+
+                // TEMP Remove vote_against since they're no longer used
+                vote_ids = removeVote(vote_ids, worker.get("vote_against"));
+            }
+        });
+
+
+        // Submit votes
         FetchChainObjects(ChainStore.getWitnessById, this.state.witnesses.toArray(), 4000).then( res => {
             let witnesses_vote_ids = res.map(o => o.get("vote_id"));
             return Promise.all([Promise.resolve(witnesses_vote_ids), FetchChainObjects(ChainStore.getCommitteeMemberById, this.state.committee.toArray(), 4000)]);
         }).then( res => {
-            updated_account.new_options.votes = res[0]
+            updateObject.new_options.votes = res[0]
                 .concat(res[1].map(o => o.get("vote_id")))
-                .concat(this.state.vote_ids.filter( id => id.split(":")[0] === "2" ).toArray() )
-                .sort((a, b)=> { return parseInt(a.split(':')[1]) - parseInt(b.split(':')[1]) });
-            console.log("updated_account: ", updated_account);
+                .concat(vote_ids.filter( id => {
+                    return id.split(":")[0] === "2";
+                }).toArray())
+                .sort((a, b) => {
+                    let a_split = a.split(":");
+                    let b_split = b.split(":");
+
+                    return parseInt(a_split[1], 10) - parseInt(b_split[1], 10);
+                });
             var tr = wallet_api.new_transaction();
-            tr.add_type_operation("account_update", updated_account);
+            tr.add_type_operation("account_update", updateObject);
             WalletDb.process_transaction(tr, null, true);
         });
     }
@@ -139,15 +215,23 @@ class AccountVoting extends React.Component {
         state[collection] = this.state[collection].filter(i => i !== item_id);
         this.setState(state);
     }
-    onAddVoteID( vote_id ) {
-      let state={}
-      state.vote_ids = this.state.vote_ids.add(vote_id);
-      this.setState(state);
-    }
-    onRemoveVoteID( vote_id ) {
-      let state={}
-      state.vote_ids = this.state.vote_ids.delete(vote_id);
-      this.setState(state);
+
+    onChangeVotes( addVotes, removeVotes) {
+        let state = {};
+        state.vote_ids = this.state.vote_ids;
+        if (addVotes.length) {
+            addVotes.forEach(vote => {
+                state.vote_ids = state.vote_ids.add(vote);
+            });
+
+        }
+        if (removeVotes) {
+            removeVotes.forEach(vote => {
+                state.vote_ids = state.vote_ids.delete(vote);
+            });
+        }
+
+        this.setState(state);
     }
 
     onProxyAccountChange(proxy_account, current_proxy_input) {
@@ -180,44 +264,211 @@ class AccountVoting extends React.Component {
         });
     }
 
-    render() {
-        let proxy_is_set = !!this.state.proxy_account_id;
-        let publish_buttons_class = cnames("button", {disabled : !this.isChanged()});
+    _getTotalVotes(worker) {
+        return parseInt(worker.get("total_votes_for"), 10) - parseInt(worker.get("total_votes_against"), 10);
+    }
 
+    getBudgetObject() {
+        let {lastBudgetObject} = this.state;
+        let budgetObject;
+
+        budgetObject = ChainStore.getObject(lastBudgetObject ? lastBudgetObject : "2.13.1");
+        if (budgetObject) {
+            let timestamp = budgetObject.get("time");
+            let now = new Date();
+
+            let idIndex = parseInt(budgetObject.get("id").split(".")[2], 10);
+            let currentID = idIndex + Math.floor((now - new Date(timestamp + "+00:00").getTime()) / 1000 / 60 / 60) - 1;
+            let newID = "2.13." + Math.max(idIndex, currentID);
+
+            ChainStore.getObject(newID);
+
+            this.setState({lastBudgetObject: newID});
+            if (newID !== currentID) {
+                this.forceUpdate();
+            }
+        } else {
+            if (lastBudgetObject !== "2.13.1") {
+                let newBudgetObjectId = parseInt(lastBudgetObject.split(".")[2], 10) - 1;
+                this.setState({
+                    lastBudgetObject: "2.13." + (newBudgetObjectId - 1)
+                })
+            }
+        }
+    }
+
+    _toggleExpired() {
+        this.setState({
+            showExpired: !this.state.showExpired
+        });
+    }
+
+    _getWorkerArray() {
         let workerArray = [];
-        let botchedWorkers = ["1.14.1", "1.14.2", "1.14.3", "1.14.5"];
 
-        for (var i = 0; i < 100; i++) {
+        for (let i = 0; i < 100; i++) {
             let id = "1.14." + i;
             let worker = ChainStore.getObject(id);
             if (worker === null) {
                 break;
             }
-            if (botchedWorkers.indexOf(id) === -1) {
-                workerArray.push(worker)
-            }
+            workerArray.push(worker);
         };
 
+        return workerArray;
+    }
+
+    render() {
+        let preferredUnit = this.props.settings.get("unit") || "1.3.0";
+        let proxy_is_set = !!this.state.proxy_account_id;
+        let publish_buttons_class = cnames("button", {disabled : !this.isChanged()});
+
+        let {globalObject, dynamicGlobal} = this.props;
+        let {showExpired} = this.state;
+
+        let budgetObject;
+        if (this.state.lastBudgetObject) {
+            budgetObject = ChainStore.getObject(this.state.lastBudgetObject);
+        }
+
+        let totalBudget = 0;
+        let unusedBudget = 0;
+        let workerBudget = globalObject ? parseInt(globalObject.getIn(["parameters", "worker_budget_per_day"]), 10) : 0;
+
+        if (budgetObject) {
+            workerBudget = Math.min(24 * budgetObject.getIn(["record", "worker_budget"]), workerBudget);
+            totalBudget = Math.min(24 * budgetObject.getIn(["record", "worker_budget"]), workerBudget);
+        }
+
+        let remainingBudget = globalObject ? parseInt(globalObject.getIn(["parameters", "worker_budget_per_day"]), 10) : 0;
+
+
         let now = new Date();
+        let workerArray = this._getWorkerArray();
 
         let workers = workerArray
         .filter(a => {
             if (!a) {
                 return false;
             }
-            return new Date(a.get("work_end_date")) > now;
-            
+
+            return (
+                new Date(a.get("work_end_date")) > now &&
+                new Date(a.get("work_begin_date")) <= now
+            );
+
         })
         .sort((a, b) => {
-            return (parseInt(b.get("total_votes_for"), 10) - parseInt(b.get("total_votes_against"), 10)) -
-            (parseInt(a.get("total_votes_for"), 10) - parseInt(a.get("total_votes_against"), 10))
+            return this._getTotalVotes(b) - this._getTotalVotes(a);
         })
-        .map(worker => {
-            return <WorkerApproval key={worker.get("id")} worker={worker.get("id")} vote_ids={this.state.vote_ids}
-                        onAddVote={this.onAddVoteID.bind(this)}
-                        onRemoveVote={this.onRemoveVoteID.bind(this)}
-                    />
+        .map((worker, index) => {
+            let dailyPay = parseInt(worker.get("daily_pay"), 10);
+            workerBudget = workerBudget - dailyPay;
+
+            return (
+                <WorkerApproval
+                    preferredUnit={preferredUnit}
+                    rest={workerBudget + dailyPay}
+                    rank={index + 1}
+                    key={worker.get("id")}
+                    worker={worker.get("id")}
+                    vote_ids={this.state.vote_ids}
+                    onChangeVotes={this.onChangeVotes.bind(this)}
+                />
+            );
+        });
+
+        unusedBudget = Math.max(0, workerBudget);
+
+        let newWorkers = workerArray
+        .filter(a => {
+            if (!a) {
+                return false;
+            }
+
+            return (
+                new Date(a.get("work_begin_date")) >= now
+            );
+
         })
+        .sort((a, b) => {
+            return this._getTotalVotes(b) - this._getTotalVotes(a);
+        })
+        .map((worker, index) => {
+            let dailyPay = parseInt(worker.get("daily_pay"), 10);
+            workerBudget = workerBudget - dailyPay;
+
+            return (
+                <WorkerApproval
+                    preferredUnit={preferredUnit}
+                    rest={workerBudget + dailyPay}
+                    rank={index + 1}
+                    key={worker.get("id")}
+                    worker={worker.get("id")}
+                    vote_ids={this.state.vote_ids}
+                    onChangeVotes={this.onChangeVotes.bind(this)}
+                />
+            );
+        });
+
+        let expiredWorkers = workerArray
+        .filter(a => {
+            if (!a) {
+                return false;
+            }
+
+            return (
+                new Date(a.get("work_end_date")) <= now
+            );
+
+        })
+        .sort((a, b) => {
+            return this._getTotalVotes(b) - this._getTotalVotes(a);
+        })
+        .map((worker, index) => {
+            let dailyPay = parseInt(worker.get("daily_pay"), 10);
+            workerBudget = workerBudget - dailyPay;
+
+            return (
+                <WorkerApproval
+                    preferredUnit={preferredUnit}
+                    rest={workerBudget + dailyPay}
+                    rank={index + 1}
+                    key={worker.get("id")}
+                    worker={worker.get("id")}
+                    vote_ids={this.state.vote_ids}
+                    onChangeVotes={this.onChangeVotes.bind(this)}
+                />
+            );
+        });
+
+        let unVotedActiveWitnesses = globalObject.get("active_witnesses").map(a => {
+            let object = ChainStore.getObject(a);
+            if (!object || !this.state.witnesses) {
+                return null;
+            }
+            if (!this.state.witnesses.includes(object.get("witness_account"))) {
+                return object.get("witness_account");
+            } else {
+                return null;
+            }
+        }).filter(a => {
+            return a !== null;
+        });
+
+        let unVotedActiveCMs = globalObject.get("active_committee_members").map(a => {
+            let object = ChainStore.getObject(a);
+            if (!object || !this.state.committee) {
+                return null;
+            }
+            if (!this.state.committee.includes(object.get("committee_member_account"))) {
+                return object.get("committee_member_account");
+            } else {
+                return null;
+            }
+        }).filter(a => {
+            return a !== null;
+        });
 
         return (
             <div className="grid-content">
@@ -236,7 +487,7 @@ class AccountVoting extends React.Component {
                         </button>) : null}
                 </div>
 
-                <Tabs setting="votingTab" style={{maxWidth: "800px"}} contentClass="grid-block shrink small-vertical medium-horizontal">
+                <Tabs setting="votingTab" tabsClass="no-padding bordered-header" contentClass="grid-content">
 
                         <Tab title="account.votes.proxy_short">
                             <div className="content-block">
@@ -260,7 +511,23 @@ class AccountVoting extends React.Component {
                                     validateAccount={this.validateAccount.bind(this, "witnesses")}
                                     onAddItem={this.onAddItem.bind(this, "witnesses")}
                                     onRemoveItem={this.onRemoveItem.bind(this, "witnesses")}
-                                    tabIndex={proxy_is_set ? -1 : 2}/>
+                                    tabIndex={proxy_is_set ? -1 : 2}
+                                    title={counterpart.translate("account.votes.w_approved_by", {account: this.props.account.get("name")})}
+                                />
+
+                                {unVotedActiveWitnesses.size ? (
+                                <AccountsList
+                                    type="witness"
+                                    label="account.votes.add_witness_label"
+                                    items={Immutable.List(unVotedActiveWitnesses)}
+                                    validateAccount={this.validateAccount.bind(this, "witnesses")}
+                                    onAddItem={this.onAddItem.bind(this, "witnesses")}
+                                    onRemoveItem={this.onRemoveItem.bind(this, "witnesses")}
+                                    tabIndex={proxy_is_set ? -1 : 2}
+                                    withSelector={false}
+                                    action="add"
+                                    title={counterpart.translate("account.votes.w_not_approved_by", {account: this.props.account.get("name")})}
+                                />) : null}
                             </div>
                         </Tab>
 
@@ -274,22 +541,94 @@ class AccountVoting extends React.Component {
                                     validateAccount={this.validateAccount.bind(this, "committee")}
                                     onAddItem={this.onAddItem.bind(this, "committee")}
                                     onRemoveItem={this.onRemoveItem.bind(this, "committee")}
-                                    tabIndex={proxy_is_set ? -1 : 3}/>
+                                    tabIndex={proxy_is_set ? -1 : 3}
+                                    title={counterpart.translate("account.votes.cm_approved_by", {account: this.props.account.get("name")})}
+                                />
+                                {unVotedActiveCMs.size ? (
+                                <AccountsList
+                                    type="committee"
+                                    label="account.votes.add_witness_label"
+                                    items={Immutable.List(unVotedActiveCMs)}
+                                    validateAccount={this.validateAccount.bind(this, "committee")}
+                                    onAddItem={this.onAddItem.bind(this, "committee")}
+                                    onRemoveItem={this.onRemoveItem.bind(this, "committee")}
+                                    tabIndex={proxy_is_set ? -1 : 2}
+                                    withSelector={false}
+                                    action="add"
+                                    title={counterpart.translate("account.votes.cm_not_approved_by", {account: this.props.account.get("name")})}
+                                />
+                                ) : null}
                             </div>
                         </Tab>
 
                         <Tab title="account.votes.workers_short">
+
                             <div className={cnames("content-block", {disabled : proxy_is_set})}>
                                 <HelpContent style={{maxWidth: "800px"}} path="components/AccountVotingWorkers" />
-                                <div className="grid-block no-padding no-margin small-up-1 medium-up-2 large-up-2">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <Translate content="account.votes.total_budget" />:</td>
+                                            <td style={{paddingLeft: 20, textAlign: "right"}}>
+                                                &nbsp;{globalObject ? <FormattedAsset amount={totalBudget} asset="1.3.0" decimalOffset={5}/> : null}
+                                                <span>&nbsp;({globalObject ? <EquivalentValueComponent fromAsset="1.3.0" toAsset={preferredUnit} amount={totalBudget}/> : null})</span>
+                                            </td></tr>
+                                        <tr><td><Translate content="account.votes.unused_budget" />:</td><td style={{paddingLeft: 20, textAlign: "right"}}> {globalObject ? <FormattedAsset amount={unusedBudget} asset="1.3.0" decimalOffset={5}/> : null}</td></tr>
+                                    </tbody>
+                                </table>
+                                <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th><Translate content="account.user_issued_assets.description" /></th>
+                                        <th className="hide-column-small"><Translate content="account.votes.creator" /></th>
+                                        <th className="hide-column-small"><Translate content="account.votes.total_votes" /></th>
+                                        <th className="hide-column-small">
+                                            <Translate content="account.votes.daily_pay" />
+                                            <div style={{paddingTop: 5, fontSize: "0.8rem"}}>(<Translate content="account.votes.daily" />)</div>
+                                        </th>
+                                        <th className="hide-column-large">
+                                            <div><Translate content="account.votes.unclaimed" /></div>
+                                            <div style={{paddingTop: 5, fontSize: "0.8rem"}}>(<Translate content="account.votes.recycled" />)</div>
+                                            </th>
+                                        <th className="hide-column-small"><Translate content="account.votes.funding" /></th>
+                                        <th></th>
+                                        <th><Translate content="account.votes.status.title" /> </th>
+                                    </tr>
+                                </thead>
+                                {newWorkers.length ? (
+                                <tbody>
+                                    <tr><td colSpan="5"><Translate component="h4" content="account.votes.new" /></td></tr>
+                                    {newWorkers}
+                                    <tr><td colSpan="5"><Translate component="h4" content="account.votes.active" /></td></tr>
+                                </tbody>
+                                ) : null}
+                                <tbody>
                                     {workers}
-                                </div>
+                                </tbody>
+
+                                <tbody>
+                                    <tr>
+                                        <td colSpan="3">
+                                            <div className="inline-block"><Translate component="h4" content="account.votes.expired" /></div>
+                                            <span>&nbsp;&nbsp;
+                                                <button onClick={this._toggleExpired.bind(this)} className="button outline">
+                                                    {showExpired ? <Translate content="exchange.hide" />: <Translate content="account.perm.show" />}
+                                                </button>
+                                            </span>
+
+                                        </td>
+                                    </tr>
+                                    {showExpired ? expiredWorkers : null}
+                                </tbody>
+                            </table>
                             </div>
                         </Tab>
                 </Tabs>
             </div>
-        )
+        );
     }
 }
 
-export default AccountVoting;
+export default BindToChainState(AccountVoting);

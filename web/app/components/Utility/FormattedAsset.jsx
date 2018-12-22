@@ -1,24 +1,24 @@
 import React from "react";
 import {FormattedNumber} from "react-intl";
 import utils from "common/utils";
+import assetUtils from "common/asset_utils";
 import {PropTypes} from "react";
-import {Link} from "react-router";
 import ChainTypes from "./ChainTypes";
 import BindToChainState from "./BindToChainState";
 import Popover from "react-popover";
-import MarketLink from "./MarketLink";
 import HelpContent from "./HelpContent";
+import AssetName from "./AssetName";
+import {ChainStore} from "graphenejs-lib/es";
 
 /**
  *  Given an amount and an asset, render it with proper precision
  *
  *  Expected Properties:
- *     asset:  asset id, which will be fetched from the 
+ *     asset:  asset id, which will be fetched from the
  *     amount: the ammount of asset
  *
  */
 
-@BindToChainState()
 class FormattedAsset extends React.Component {
 
     static propTypes = {
@@ -39,11 +39,8 @@ class FormattedAsset extends React.Component {
         hide_asset: false,
         hide_amount: false,
         asPercentage: false,
-        assetInfo: null
-    };
-
-    static contextTypes = {
-        history: React.PropTypes.object
+        assetInfo: null,
+        replace: true
     };
 
     constructor(props) {
@@ -88,36 +85,45 @@ class FormattedAsset extends React.Component {
 
         }
 
-        var issuer = ChainStore.getObject(asset.issuer);
-        var issuerName = issuer ? issuer.get('name') : '';
+        let issuer = ChainStore.getObject(asset.issuer);
+        let issuerName = issuer ? issuer.get('name') : '';
+
+        let description = assetUtils.parseDescription(asset.options.description);
 
         const currency_popover_body = !hide_asset && this.props.assetInfo && <div>
             <HelpContent
-                path={"assets/" + asset.symbol}
-                alt_path="assets/Asset"
+                path={"assets/Asset"}
                 section="summary"
                 symbol={asset.symbol}
-                description={asset.options.description}
-                issuer={issuerName}/>
+                description={description.short_name ? description.short_name : description.main}
+                issuer={issuerName}
+            />
             {this.props.assetInfo}
         </div>;
 
         return (
                 <span className={colorClass}  >
                 {!hide_amount ?
-                  <FormattedNumber
-                    value={this.props.exact_amount ? amount : amount / precision}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={decimals}
+                    <FormattedNumber
+                        value={this.props.exact_amount ? amount : amount / precision}
+                        minimumFractionDigits={0}
+                        maximumFractionDigits={decimals}
                     />
                 : null}
-                {!hide_asset && (this.props.assetInfo ? <Popover isOpen={this.state.isPopoverOpen} onOuterAction={this.closePopover} body={currency_popover_body}>
-                    <span>&nbsp;<span className="currency click-for-help" onClick={this.togglePopover}>{asset.symbol}</span></span>
-                </Popover> : <span>&nbsp;<span className="currency" onClick={this.togglePopover}>{asset.symbol}</span></span>)}
+                {!hide_asset && (this.props.assetInfo ? (
+                    <span>&nbsp;
+                    <Popover
+                        isOpen={this.state.isPopoverOpen}
+                        onOuterAction={this.closePopover}
+                        body={currency_popover_body}
+                    >
+                        <span className="currency click-for-help" onClick={this.togglePopover}><AssetName name={asset.symbol} /></span>
+                    </Popover></span>) :
+                    <span className="currency" onClick={this.togglePopover}> <AssetName noPrefix={this.props.noPrefix} name={asset.symbol} /></span>)}
                 </span>
         );
     }
 }
+FormattedAsset = BindToChainState(FormattedAsset);
 
 export default FormattedAsset;
-

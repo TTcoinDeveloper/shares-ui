@@ -1,18 +1,18 @@
 import React from "react";
-import {Link} from "react-router";
+import {Link} from "react-router/es";
 import ChainTypes from "./ChainTypes";
 import BindToChainState from "./BindToChainState";
+import AssetName from "./AssetName";
 
 /**
  *  Given a base and quote asset, render a link to that market
  *
  *  Expected Properties:
  *     base:  asset id, which will be fetched from the ChainStore
- *     quote: either an asset id or a balance id 
+ *     quote: either an asset id or a balance id
  *
  */
 
-@BindToChainState()
 class MarketLink extends React.Component {
 
     static propTypes = {
@@ -30,14 +30,15 @@ class MarketLink extends React.Component {
             return null;
         }
         let marketID = quote.get("symbol") + "_" + base.get("symbol");
-        let marketName = quote.get("symbol") + " : " + base.get("symbol");
+        let marketName = <span><AssetName name={quote.get("symbol")} /> : <AssetName name={base.get("symbol")} /></span>;
         return (
             <Link to={`/market/${marketID}`}>{marketName}</Link>
         );
     }
 }
 
-@BindToChainState()
+MarketLink = BindToChainState(MarketLink);
+
 class ObjectWrapper extends React.Component {
 
     static propTypes = {
@@ -48,9 +49,10 @@ class ObjectWrapper extends React.Component {
         let {object} = this.props;
         let quoteAsset = object.has("asset_type") ? object.get("asset_type") : object.get("id");
 
-        return <MarketLink quote={quoteAsset} />
+        return <MarketLink quote={quoteAsset} />;
     }
 }
+ObjectWrapper = BindToChainState(ObjectWrapper);
 
 MarketLink.ObjectWrapper = ObjectWrapper;
 

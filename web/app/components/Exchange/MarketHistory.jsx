@@ -1,7 +1,6 @@
 import React from "react";
-import ReactDOM from "react-dom";
 import {PropTypes} from "react";
-import {Link} from "react-router";
+import {Link} from "react-router/es";
 import Immutable from "immutable";
 import Ps from "perfect-scrollbar";
 import utils from "common/utils";
@@ -11,27 +10,18 @@ import PriceText from "../Utility/PriceText";
 import cnames from "classnames";
 import SettingsActions from "actions/SettingsActions";
 import SettingsStore from "stores/SettingsStore";
-import connectToStores from "alt/utils/connectToStores";
-import {operations} from "chain/chain_types";
+import { connect } from "alt-react";
+import TransitionWrapper from "../Utility/TransitionWrapper";
+import AssetName from "../Utility/AssetName";
+import { ChainTypes as grapheneChainTypes } from "graphenejs-lib/es";
+const {operations} = grapheneChainTypes;
 
-@connectToStores
 class MarketHistory extends React.Component {
-
-    static getStores() {
-        return [SettingsStore]
-    }
-
-    static getPropsFromStores() {
-        return {
-            viewSettings: SettingsStore.getState().viewSettings
-        }
-    }
-
     constructor(props) {
         super();
         this.state = {
-            activeTab: props.viewSettings.get("historyTab") || "history"
-        }
+            activeTab: props.viewSettings.get("historyTab", "history")
+        };
     }
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -39,17 +29,18 @@ class MarketHistory extends React.Component {
             !Immutable.is(nextProps.history, this.props.history) ||
             nextProps.baseSymbol !== this.props.baseSymbol ||
             nextProps.quoteSymbol !== this.props.quoteSymbol ||
+            nextProps.className !== this.props.className ||
             nextState.activeTab !== this.state.activeTab
         );
     }
 
     componentDidMount() {
-        let historyContainer = ReactDOM.findDOMNode(this.refs.history);
+        let historyContainer = this.refs.history;
         Ps.initialize(historyContainer);
     }
 
     componentDidUpdate() {
-        let historyContainer = ReactDOM.findDOMNode(this.refs.history);
+        let historyContainer = this.refs.history;
         Ps.update(historyContainer);
     }
 
@@ -63,15 +54,19 @@ class MarketHistory extends React.Component {
     }
 
     render() {
-        let {history, myHistory, base, quote, baseSymbol, quoteSymbol, flipped} = this.props;
+        let {history, myHistory, base, quote, baseSymbol, quoteSymbol, flipped, isNullAccount} = this.props;
         let  {activeTab} = this.state;
         let historyRows = null;
+
+        if (isNullAccount) {
+            activeTab = "history";
+        }
 
         if (activeTab === "my_history" && (myHistory && myHistory.size)) {
             let index = 0;
             let keyIndex = -1;
             let flipped = base.get("id").split(".")[2] > quote.get("id").split(".")[2];
-            historyRows = myHistory.filter(a => {            
+            historyRows = myHistory.filter(a => {
                 let opType = a.getIn(["op", 0]);
                 return (opType === operations.fill_order);
             }).filter(a => {
@@ -122,7 +117,7 @@ class MarketHistory extends React.Component {
                 index++;
                 return index % 2 === 0;
             })
-            .take(50)
+            .take(100)
             .map(order => {
                 keyIndex++;
                 let paysAsset, receivesAsset, isAsk = false;
@@ -155,33 +150,42 @@ class MarketHistory extends React.Component {
         let myHistoryClass = cnames(hc, {inactive: activeTab === "history"});
 
         return (
-            <div className="left-order-book no-padding no-overflow">
-                <div style={this.props.headerStyle} className="grid-block shrink left-orderbook-header bottom-header">
-                    <div className={myHistoryClass} onClick={this._changeTab.bind(this, "my_history")} >
-                        <Translate content="exchange.my_history" />
+            <div className={this.props.className}>
+                <div className="exchange-bordered">
+                    <div style={this.props.headerStyle} className="grid-block shrink left-orderbook-header bottom-header">
+                            <div className={cnames(myHistoryClass, {disabled: isNullAccount})} onClick={this._changeTab.bind(this, "my_history")} >
+                                <Translate content="exchange.my_history" />
+                            </div>
+                        <div className={historyClass} onClick={this._changeTab.bind(this, "history")}>
+                            <Translate content="exchange.history" />
+                        </div>
                     </div>
-                    <div className={historyClass} onClick={this._changeTab.bind(this, "history")}>
-                        <Translate content="exchange.history" />
+                    <div className="grid-block shrink left-orderbook-header market-right-padding-only">
+                        <table className="table order-table text-right market-right-padding">
+                            <thead>
+                                <tr>
+                                    <th style={{width: "25%", textAlign: "center"}}><Translate className="header-sub-title" content="exchange.price" /></th>
+                                    <th style={{width: "25%", textAlign: "center"}}><span className="header-sub-title"><AssetName name={quoteSymbol} /></span></th>
+                                    <th style={{width: "25%", textAlign: "center"}}><span className="header-sub-title"><AssetName name={baseSymbol} /></span></th>
+                                    <th style={{width: "25%", textAlign: "center"}}><Translate className="header-sub-title" content={activeTab === "history" ? "explorer.block.date" : "explorer.block.title"} /></th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
-                </div>
-                <div className="grid-block shrink left-orderbook-header market-right-padding-only">
-                    <table className="table order-table text-right market-right-padding">
-                        <thead>
-                            <tr>
-                                <th style={{textAlign: "right"}}><Translate content="exchange.price" /><br/><span className="header-sub-title">{baseSymbol}/{quoteSymbol}</span></th>
-                                <th style={{textAlign: "right"}}><Translate content="transfer.amount" /><br/><span className="header-sub-title">({quoteSymbol})</span></th>
-                                <th style={{textAlign: "right"}}><Translate content="exchange.value" /><br/><span className="header-sub-title">({baseSymbol})</span></th>
-                                <th style={{textAlign: "right"}}><Translate content={activeTab === "history" ? "explorer.block.date" : "explorer.block.title"} /><br/><span style={{visibility: "hidden"}} className="header-sub-title">({quoteSymbol})</span></th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-                <div className="table-container grid-content market-right-padding-only" ref="history">
-                    <table className="table order-table text-right market-right-padding">
-                        <tbody>
-                            {historyRows}
-                        </tbody>
-                    </table>
+                    <div
+                        className="table-container grid-block market-right-padding-only no-overflow"
+                        ref="history"
+                        style={{maxHeight: 210, overflow: "hidden"}}
+                    >
+                        <table className="table order-table text-right market-right-padding">
+                            <TransitionWrapper
+                                component="tbody"
+                                transitionName="newrow"
+                            >
+                                {historyRows}
+                            </TransitionWrapper>
+                        </table>
+                    </div>
                 </div>
             </div>
         );
@@ -196,4 +200,13 @@ MarketHistory.propTypes = {
     history: PropTypes.object.isRequired
 };
 
-export default MarketHistory;
+export default connect(MarketHistory, {
+    listenTo() {
+        return [SettingsStore];
+    },
+    getProps() {
+        return {
+            viewSettings: SettingsStore.getState().viewSettings
+        };
+    }
+});

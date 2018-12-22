@@ -1,21 +1,19 @@
 import React from "react";
-import {PropTypes} from "react-router";
 import Immutable from "immutable";
 import AccountImage from "../Account/AccountImage";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
-import ChainStore from "api/ChainStore";
+import {ChainStore} from "graphenejs-lib/es";
 import FormattedAsset from "../Utility/FormattedAsset";
 import Translate from "react-translate-component";
 import TimeAgo from "../Utility/TimeAgo";
-import connectToStores from "alt/utils/connectToStores";
+import { connect } from "alt-react";
 import SettingsActions from "actions/SettingsActions";
 import SettingsStore from "stores/SettingsStore";
 import classNames from "classnames";
 
 require("./witnesses.scss");
 
-@BindToChainState({keep_updating: true})
 class WitnessCard extends React.Component {
 
     static propTypes = {
@@ -23,12 +21,12 @@ class WitnessCard extends React.Component {
     }
 
     static contextTypes = {
-        history: PropTypes.history
-    };
+        router: React.PropTypes.object.isRequired
+    }
 
     _onCardClick(e) {
         e.preventDefault();
-        this.context.history.pushState(null, `/account/${this.props.witness.get("name")}`);
+        this.context.router.push(`/account/${this.props.witness.get("name")}`);
     }
 
     render() {
@@ -77,8 +75,8 @@ class WitnessCard extends React.Component {
         );
     }
 }
+WitnessCard = BindToChainState(WitnessCard, {keep_updating: true});
 
-@BindToChainState({keep_updating: true})
 class WitnessRow extends React.Component {
 
     static propTypes = {
@@ -86,12 +84,12 @@ class WitnessRow extends React.Component {
     }
 
     static contextTypes = {
-        history: PropTypes.history
-    };
+        router: React.PropTypes.object.isRequired
+    }
 
     _onRowClick(e) {
         e.preventDefault();
-        this.context.history.pushState(null, `/account/${this.props.witness.get("name")}`);
+        this.context.router.push(`/account/${this.props.witness.get("name")}`);
     }
 
     render() {
@@ -114,10 +112,10 @@ class WitnessRow extends React.Component {
 
         let missed = witness_data.get('total_missed');
         let missedClass = classNames("txtlabel",
-            {"success": missed <= 25 },
-            {"info": missed > 25 && missed <= 50},
-            {"warning": missed > 50 && missed <= 150},
-            {"error": missed >= 150}
+            {"success": missed <= 500 },
+            {"info": missed > 500 && missed <= 1250},
+            {"warning": missed > 1250 && missed <= 2000},
+            {"error": missed >= 200}
         );
 
         return (
@@ -127,13 +125,13 @@ class WitnessRow extends React.Component {
                 <td><TimeAgo time={new Date(last_aslot_time)} /></td>
                 <td>{witness_data.get('last_confirmed_block_num')}</td>
                 <td className={missedClass}>{missed}</td>
-                <td><FormattedAsset amount={witness_data.get('total_votes')} asset="1.3.0" /></td>
+                <td><FormattedAsset amount={witness_data.get('total_votes')} asset="1.3.0" decimalOffset={5} /></td>
             </tr>
         )
     }
 }
+WitnessRow = BindToChainState(WitnessRow, {keep_updating: true});
 
-@BindToChainState({keep_updating: true, show_loader: true})
 class WitnessList extends React.Component {
 
     static propTypes = {
@@ -272,8 +270,8 @@ class WitnessList extends React.Component {
         }
     }
 }
+WitnessList = BindToChainState(WitnessList, {keep_updating: true, show_loader: true});
 
-@BindToChainState({keep_updating: true})
 class Witnesses extends React.Component {
 
 
@@ -386,23 +384,24 @@ class Witnesses extends React.Component {
         );
     }
 }
+Witnesses = BindToChainState(Witnesses, {keep_updating: true});
 
-@connectToStores
 class WitnessStoreWrapper extends React.Component {
-    static getStores() {
-        return [SettingsStore]
+    render () {
+        return <Witnesses {...this.props}/>;
     }
+}
 
-    static getPropsFromStores() {
+WitnessStoreWrapper = connect(WitnessStoreWrapper, {
+    listenTo() {
+        return [SettingsStore];
+    },
+    getProps() {
         return {
             cardView: SettingsStore.getState().viewSettings.get("cardView"),
             filterWitness: SettingsStore.getState().viewSettings.get("filterWitness")
-        }
+        };
     }
-
-    render () {
-        return <Witnesses {...this.props}/>
-    }
-}
+});
 
 export default WitnessStoreWrapper;

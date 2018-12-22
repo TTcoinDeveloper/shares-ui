@@ -4,8 +4,8 @@ import ChainTypes from "./ChainTypes";
 import BindToChainState from "./BindToChainState";
 import utils from "common/utils";
 import MarketsActions from "actions/MarketsActions";
-import ChainStore from "api/ChainStore";
-import connectToStores from "alt/utils/connectToStores";
+import {ChainStore} from "graphenejs-lib/es";
+import { connect } from "alt-react";
 import MarketsStore from "stores/MarketsStore";
 import SettingsStore from "stores/SettingsStore";
 import Immutable from "immutable";
@@ -20,7 +20,6 @@ import Immutable from "immutable";
  *  -'fullPrecision' boolean to tell if the amount uses the full precision of the asset
  */
 
-@BindToChainState({keep_updating: true})
 class TotalValue extends React.Component {
 
     static propTypes = {
@@ -76,10 +75,10 @@ class TotalValue extends React.Component {
             // To asset
             if (props.toAsset.get("id") !== coreAsset.get("id")) {
                 // wrap this in a timeout to prevent dispatch in the middle of a dispatch
-                setTimeout(() => {
-                    MarketsActions.getMarketStats.bind(this, coreAsset, props.toAsset);
-                    this.toStatsInterval = setInterval(MarketsActions.getMarketStats.bind(this, coreAsset, props.toAsset), 10 * 60 * 1000);
-                }, 150);
+                MarketsActions.getMarketStats.defer(coreAsset, this.props.toAsset);
+                this.toStatsInterval = setInterval(() => {
+                    MarketsActions.getMarketStats.defer(coreAsset, this.props.toAsset);
+                }, 5 * 60 * 1000);
             }
         }
     }
@@ -121,16 +120,21 @@ class TotalValue extends React.Component {
             fromStats = marketStats.get(fromSymbol + "_" + coreSymbol);
         }
 
-        let price = utils.convertPrice(fromStats && fromStats.close ? fromStats.close : fromAsset, toStats && toStats.close ? toStats.close : toAsset, fromID, toID);
+        let price = utils.convertPrice(fromStats && fromStats.close ? fromStats.close :
+                                       fromID === "1.3.0" || fromAsset.has("bitasset") ? fromAsset : null,
+                                       toStats && toStats.close ? toStats.close :
+                                       (toID === "1.3.0" || toAsset.has("bitasset")) ? toAsset : null,
+                                       fromID,
+                                       toID);
 
-        return utils.convertValue(price, amount, fromAsset, toAsset);
+        return price ? utils.convertValue(price, amount, fromAsset, toAsset) : null;
     }
 
     _assetValues(totals, amount, asset) {
         if (!totals[asset]) {
-            totals[asset] = amount; 
+            totals[asset] = amount;
         } else {
-            totals[asset] += amount; 
+            totals[asset] += amount;
         }
 
         return totals;
@@ -139,9 +143,12 @@ class TotalValue extends React.Component {
     render() {
         let {fromAssets, toAsset, balances, marketStats, collateral, debt, openOrders, inHeader} = this.props;
         let coreAsset = ChainStore.getAsset("1.3.0");
+
         if (!coreAsset || !toAsset) {
             return null;
         }
+
+
         let assets = {};
         fromAssets.forEach(asset => {
             if (asset) {
@@ -192,52 +199,88 @@ class TotalValue extends React.Component {
             }
         });
 
-        let totalsTip = "<table><tbody>";
+        // Determine if higher precision should be displayed
+        let hiPrec = false;
         for (let asset in assetValues) {
-            if (assets[asset]) {
-                let symbol = assets[asset].get("symbol");
-                let amount = utils.format_asset(assetValues[asset], toAsset );
-                totalsTip = totalsTip += `<tr><td>${symbol}:&nbsp;</td><td style="text-align: right;">${amount}</td></tr>`;
+            if (assets[asset] && assetValues[asset]) {
+                if (Math.abs(utils.get_asset_amount(assetValues[asset], toAsset)) < 100) {
+                    hiPrec = true;
+                    break;
+                }
             }
         }
 
-        totalsTip += "</tbody></table>"
-        
+        // Render each asset's balance, noting if there are any values missing
+        const noDataSymbol = "**";
+        const minValue = 1e-12;
+        let missingData = false;
+        let totalsTip = "<table><tbody>";
+        for (let asset in assetValues) {
+            if (assets[asset] && assetValues[asset]) {
+                let symbol = assets[asset].get("symbol");
+                let amount = utils.get_asset_amount(assetValues[asset], toAsset);
+                if (amount) {
+                    if (amount < minValue && amount > -minValue) { // really close to zero, but not zero, probably a result of incomplete data
+                        amount = noDataSymbol;
+                        missingData = true;
+                    } else if (hiPrec) {
+                        if (amount >= 0 && amount < 0.01)      amount = "<0.01";
+                        else if (amount < 0 && amount > -0.01) amount = "-0.01<";
+                        else                                   amount = utils.format_number(amount, 2);
+                    } else {
+                        if (amount >= 0 && amount < 1)         amount = "<1";
+                        else if (amount < 0 && amount > -0.01) amount = "-1<";
+                        else                                   amount = utils.format_number(amount, 0);
+                    }
+                } else {
+                    amount = noDataSymbol;
+                    missingData = true;
+                }
+                totalsTip += `<tr><td>${symbol}:&nbsp;</td><td style="text-align: right;">${amount} ${toAsset.get("symbol")}</td></tr>`;
+            }
+        }
+
+        // If any values are missing, let the user know.
+        if (missingData)
+            totalsTip += `<tr><td>&nbsp;</td><td style="text-align: right;">${noDataSymbol} no data</td></tr>`;
+
+        totalsTip += "</tbody></table>";
+
         // console.log("assetValues:", assetValues, "totalsTip:", totalsTip);
         if (!inHeader) {
-            return <FormattedAsset amount={totalValue} asset={toAsset.get("id")}/>;
+            return <FormattedAsset noPrefix amount={totalValue} asset={toAsset.get("id")} decimalOffset={toAsset.get("symbol").indexOf("BTC") === -1 ? toAsset.get("precision") : 4}/>;
         } else {
             return (
-                <div data-tip={totalsTip} data-place="bottom" data-type="light" html data-html={true} >
-                    <FormattedAsset amount={totalValue} asset={toAsset.get("id")}/>
+                <div className="tooltip" data-tip={totalsTip} data-place="bottom" data-html={true} >
+                    <FormattedAsset noPrefix amount={totalValue} asset={toAsset.get("id")} decimalOffset={toAsset.get("symbol").indexOf("BTC") === -1 ? toAsset.get("precision") : 4}/>
                 </div>
 
             );
         }
     }
 }
+TotalValue = BindToChainState(TotalValue, {keep_updating: true});
 
-@connectToStores
 class ValueStoreWrapper extends React.Component {
-    static getStores() {
-        return [MarketsStore, SettingsStore]
-    };
-
-    static getPropsFromStores() {
-        return {
-            marketStats: MarketsStore.getState().allMarketStats,
-            settings: SettingsStore.getState().settings
-        }
-    };
-
     render() {
-        let preferredUnit = this.props.settings.get("unit") || "1.3.0"
+        let preferredUnit = this.props.settings.get("unit") || "1.3.0";
 
-        return <TotalValue {...this.props} toAsset={preferredUnit}/>
+        return <TotalValue {...this.props} toAsset={preferredUnit}/>;
     }
 }
 
-@BindToChainState({keep_updating: true})
+ValueStoreWrapper = connect(ValueStoreWrapper, {
+    listenTo() {
+        return [MarketsStore, SettingsStore];
+    },
+    getProps() {
+        return {
+            marketStats: MarketsStore.getState().allMarketStats,
+            settings: SettingsStore.getState().settings
+        };
+    }
+});
+
 class TotalBalanceValue extends React.Component {
 
     static propTypes = {
@@ -277,8 +320,8 @@ class TotalBalanceValue extends React.Component {
         return <ValueStoreWrapper inHeader={inHeader} balances={amounts} openOrders={openOrders} debt={debt} collateral={collateral} fromAssets={assets}/>;
     }
 }
+TotalBalanceValue = BindToChainState(TotalBalanceValue, {keep_updating: true});
 
-@BindToChainState({keep_updating: true})
 class AccountWrapper extends React.Component {
 
     static propTypes = {
@@ -296,7 +339,7 @@ class AccountWrapper extends React.Component {
 
             if (account) {
 
-                account.get("orders").forEach( (orderID, key) => {
+                account.get("orders") && account.get("orders").forEach( (orderID, key) => {
                     let order = ChainStore.getObject(orderID);
                     if (order) {
                         let orderAsset = order.getIn(["sell_price", "base", "asset_id"]);
@@ -308,7 +351,7 @@ class AccountWrapper extends React.Component {
                     }
                 });
 
-                account.get("call_orders").forEach( (callID, key) => {
+                account.get("call_orders") && account.get("call_orders").forEach( (callID, key) => {
                     let position = ChainStore.getObject(callID);
                     if (position) {
                         collateral += parseInt(position.get("collateral"), 10);
@@ -323,7 +366,7 @@ class AccountWrapper extends React.Component {
                 });
 
                 let account_balances = account.get("balances");
-                account_balances.forEach( balance => {
+                account_balances && account_balances.forEach( balance => {
                     let balanceAmount = ChainStore.getObject(balance);
                     if (!balanceAmount || !balanceAmount.get("balance")) {
                         return null;
@@ -331,11 +374,12 @@ class AccountWrapper extends React.Component {
                     balanceList = balanceList.push(balance);
                 });
             }
-        })
+        });
 
         return balanceList.size ? <TotalBalanceValue inHeader={this.props.inHeader} balances={balanceList} openOrders={openOrders} debt={debt} collateral={collateral}/> : null;
     }
 }
+AccountWrapper = BindToChainState(AccountWrapper, {keep_updating: true});
 
 TotalBalanceValue.AccountWrapper = AccountWrapper;
 export default TotalBalanceValue;

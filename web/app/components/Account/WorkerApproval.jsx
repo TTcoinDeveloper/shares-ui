@@ -1,118 +1,156 @@
 import React from "react";
-import Immutable from "immutable";
-import {PropTypes} from "react";
 import Translate from "react-translate-component";
-import AutocompleteInput from "../Forms/AutocompleteInput";
 import counterpart from "counterpart";
-import LoadingIndicator from "../LoadingIndicator";
-import AccountSelector from "./AccountSelector";
 import utils from "common/utils";
-import WalletApi from "rpc_api/WalletApi";
-import WalletDb from "stores/WalletDb.js"
-import ChainStore from "api/ChainStore";
-import validation from "common/validation"
-import AccountImage from "./AccountImage";
-import {FetchChainObjects} from "api/ChainStore";
 import ChainTypes from "../Utility/ChainTypes";
 import FormattedAsset from "../Utility/FormattedAsset";
 import VestingBalance from "../Utility/VestingBalance";
 import LinkToAccountById from "../Blockchain/LinkToAccountById";
 import BindToChainState from "../Utility/BindToChainState";
+import {EquivalentValueComponent} from "../Utility/EquivalentValueComponent";
+import Icon from "components/Icon/Icon";
 
-@BindToChainState()
 class WorkerApproval extends React.Component{
 
-   static propTypes = {
-      worker: ChainTypes.ChainObject.isRequired ,
-      onAddVote: React.PropTypes.func, /// called with vote id to add
-      onRemoveVote: React.PropTypes.func, /// called with vote id to remove
-      vote_ids: React.PropTypes.object  /// Set of items currently being voted for
-   }
-   constructor( props ) {
-      super(props);
-   }
+    static propTypes = {
+        worker: ChainTypes.ChainObject.isRequired ,
+        onAddVote: React.PropTypes.func, /// called with vote id to add
+        onRemoveVote: React.PropTypes.func, /// called with vote id to remove
+        vote_ids: React.PropTypes.object  /// Set of items currently being voted for
+    };
 
-   onApprove() {
-      if( this.props.vote_ids.has( this.props.worker.get("vote_for") ) )
-         this.props.onRemoveVote( this.props.worker.get("vote_for") );
-      else
-         this.props.onAddVote( this.props.worker.get("vote_for") );
-   }
+    static defaultProps = {
+        tempComponent: "tr"
+    };
 
-   onReject() {
-      if( this.props.vote_ids.has( this.props.worker.get("vote_against") ) )
-         this.props.onRemoveVote( this.props.worker.get("vote_against") );
-      else
-         this.props.onAddVote( this.props.worker.get("vote_against") );
-   }
+    constructor( props ) {
+        super(props);
+    }
 
-   render() {
-      let worker = this.props.worker.toJS();
-      // console.log( "render...", worker);
-      let total_votes = worker.total_votes_for - worker.total_votes_against; 
-      let total_days = 1;
-      let approval = counterpart.translate("account.votes.status.neutral");
+    onApprove() {
+        let addVotes = [], removeVotes = [];
 
-      // console.log( "this.props.vote_ids: ", this.props.vote_ids )
-      if( this.props.vote_ids.has( worker.vote_for ) && !this.props.vote_ids.has( worker.vote_against ) ) {
-         approval = counterpart.translate("account.votes.status.supported");
-      } else if( !this.props.vote_ids.has( worker.vote_for ) && this.props.vote_ids.has( worker.vote_against ) ) {
-         approval = counterpart.translate("account.votes.status.rejected");
-      }
+        if( this.props.vote_ids.has( this.props.worker.get("vote_against") ) ) {
+            removeVotes.push(this.props.worker.get("vote_against"));
+        }
 
-      return  (
-      <div style={{padding: "0.5em 0.5em"}} className="grid-content account-card worker-card">
-         <div className="card">
-            <div className="card-divider text-center info">
-               <span>#{worker.id} : {worker.name} </span>
-            </div>
-            <div className="card-section">
-               <ul >
-                  <li>
-                     <span><Translate content="account.votes.worker_account" />:&nbsp;<LinkToAccountById account={worker.worker_account} /> </span>
-                  </li>
-                  <li>
-                     <div><Translate content="account.votes.url" />:&nbsp;<a target="_blank" href={worker.url}>{worker.url}</a> </div>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.total_votes" />: <FormattedAsset amount={total_votes} asset="1.3.0" /><br/>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.daily_pay" />: <FormattedAsset amount={worker.daily_pay} asset="1.3.0" /><br/>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.max_pay" />: <FormattedAsset amount={worker.daily_pay*total_days} asset="1.3.0" /><br/>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.unclaimed" />: <VestingBalance balance={worker.worker[1].balance} /> <br/>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.status.title" />: {approval} <br/>
-                  </li>
-                  <li>
-                     <Translate content="account.votes.start" />: {new Date(worker.work_begin_date).toLocaleString()}
-                  </li>
-                  <li>
-                     <Translate content="account.votes.end" />: {new Date(worker.work_end_date).toLocaleString()}
-                  </li>
-               </ul>
+        if( !this.props.vote_ids.has( this.props.worker.get("vote_for") ) ) {
+            addVotes.push(this.props.worker.get("vote_for"));
+        }
 
-               <div className="button-group no-margin" style={{paddingTop: "1rem"}}>
-                  <button className="button success" onClick={this.onApprove.bind(this)}>
-                     <Translate content="account.votes.approve_worker"/>
-                  </button>
+        this.props.onChangeVotes( addVotes, removeVotes);
+    }
 
-                  <button className="button info" onClick={this.onReject.bind(this)}>
-                     <Translate content="account.votes.reject_worker"/>
-                  </button>
-               </div>
-            </div>
+    onReject() {
+        let addVotes = [], removeVotes = [];
 
-         </div>
-      </div>
-      )
-   }
+        if( this.props.vote_ids.has( this.props.worker.get("vote_against") ) ) {
+            removeVotes.push(this.props.worker.get("vote_against"));
+        }
 
+        if( this.props.vote_ids.has( this.props.worker.get("vote_for") ) ) {
+            removeVotes.push(this.props.worker.get("vote_for"));
+        }
+
+        this.props.onChangeVotes( addVotes, removeVotes);
+    }
+
+    render() {
+        let {rank} = this.props;
+        let worker = this.props.worker.toJS();
+        // console.log( "render...", worker);
+        let total_votes = worker.total_votes_for - worker.total_votes_against;
+        let total_days = 1;
+
+        let approvalState = this.props.vote_ids.has(worker.vote_for) ? true :
+        this.props.vote_ids.has(worker.vote_against) ? false :
+        null;
+
+        let approval = null;
+
+        // console.log( "this.props.vote_ids: ", this.props.vote_ids )
+        if( approvalState === true ) {
+            approval = <Icon name="checkmark" />;
+        }
+
+        let displayURL = worker.url ? worker.url.replace(/http:\/\/|https:\/\//, "") : "";
+
+        if (displayURL.length > 25) {
+            displayURL = displayURL.substr(0, 25) + "...";
+        }
+
+        let fundedPercent = 0;
+
+        if (worker.daily_pay < this.props.rest) {
+            fundedPercent = 100;
+        } else if (this.props.rest > 0) {
+            fundedPercent = this.props.rest / worker.daily_pay * 100;
+        }
+
+        let startDate = counterpart.localize(new Date(worker.work_begin_date), { type: "date" });
+        let endDate = counterpart.localize(new Date(worker.work_end_date), { type: "date" });
+
+        let now = new Date();
+        let isExpired = new Date(worker.work_end_date) <= now;
+
+        return  (
+
+            <tr>
+                {isExpired ? null : <td style={{backgroundColor: fundedPercent > 0 ? "green" : "orange"}}>#{rank}</td>}
+
+                <td colSpan={isExpired ? "2" : "1"}>
+                    <div>{worker.name}</div>
+                    <div style={{paddingTop: 5, fontSize: "0.85rem"}}>
+                    {startDate} - {endDate}</div>
+                </td>
+
+                <td className="hide-column-small">
+                    <div><LinkToAccountById account={worker.worker_account} /></div>
+                    <div style={{paddingTop: 5, fontSize: "0.85rem"}}><a target="_blank" href={worker.url}>{displayURL}</a> </div>
+                </td>
+
+                <td className="hide-column-small">
+                    <FormattedAsset amount={total_votes} asset="1.3.0" decimalOffset={5}/>
+                </td>
+
+                <td className="hide-column-small">
+                    <FormattedAsset amount={worker.daily_pay} asset="1.3.0" decimalOffset={5}/>
+                    {this.props.preferredUnit !== "1.3.0" ?<div style={{paddingTop: 5}}>
+                        (<EquivalentValueComponent fromAsset="1.3.0" toAsset={this.props.preferredUnit} amount={worker.daily_pay}/>)
+                    </div> : null}
+                </td>
+
+                <td className="hide-column-large">
+                    {worker.worker[1].balance ?
+                        <VestingBalance balance={worker.worker[1].balance} decimalOffset={5}/> :
+                        worker.worker[1].total_burned ?
+                        <span>(<FormattedAsset amount={worker.worker[1].total_burned} asset="1.3.0" decimalOffset={5} />)</span> :
+                            null}
+                </td>
+
+                <td className="hide-column-small">
+                    {utils.format_number(fundedPercent, 2)}%
+                </td>
+
+                <td style={{textAlign: "right"}}>
+                    {approvalState !== true ?
+                    <button className="button outline success" onClick={this.onApprove.bind(this)}>
+                    +
+                    </button> :
+                    <button className="button outline info" onClick={this.onReject.bind(this)}>
+                    -
+                    </button>}
+                </td>
+
+                <td style={{padding: 0, textAlign: "center", backgroundColor: approvalState === true ? "green" : approvalState === false ? "red" : "transparent"}}>
+                    {approval}
+                </td>
+                
+                {/*<div className="button-group no-margin" style={{paddingTop: "1rem"}}>
+                </div>*/}
+            </tr>
+        );
+    }
 }
 
-export default WorkerApproval
+export default BindToChainState(WorkerApproval);
