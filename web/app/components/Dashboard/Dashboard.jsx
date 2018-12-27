@@ -1,152 +1,71 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import Immutable from "immutable";
-import DashboardList from "./DashboardList";
-import { RecentTransactions } from "../Account/RecentTransactions";
+import AccountsList from "./AccountsList";
+import RecentTransactions from "../Account/RecentTransactions";
 import Translate from "react-translate-component";
-import MarketCard from "./MarketCard";
+import Proposals from "components/Account/Proposals";
+import ps from "perfect-scrollbar";
 
 class Dashboard extends React.Component {
 
-
     constructor() {
         super();
-        this.state = {
-            width: null,
-            showIgnored: false
-        };
+        this.state = {width: null};
+        this._setWidth = this._setWidth.bind(this);
+    }
 
-        this._setDimensions = this._setDimensions.bind(this);
+
+    componentDidMount() {
+        let c = ReactDOM.findDOMNode(this.refs.container);
+        ps.initialize(c);
+        let t = ReactDOM.findDOMNode(this.refs.transactions);
+        ps.initialize(t);
+    }
+
+    componentDidUpdate() {
+        let c = ReactDOM.findDOMNode(this.refs.container);
+        ps.update(c);
+        let t = ReactDOM.findDOMNode(this.refs.transactions);
+        ps.update(t);        
     }
 
     componentDidMount() {
-        this._setDimensions();
+        this._setWidth();
 
-        window.addEventListener("resize", this._setDimensions, false);
-    }
-
-    shouldComponentUpdate(nextProps, nextState) {
-        return (
-            nextProps.linkedAccounts !== this.props.linkedAccounts ||
-            nextProps.ignoredAccounts !== this.props.ignoredAccounts ||
-            nextState.width !== this.state.width ||
-            nextState.showIgnored !== this.state.showIgnored
-        );
+        window.addEventListener("resize", this._setWidth, false);
     }
 
     componentWillUnmount() {
-        window.removeEventListener("resize", this._setDimensions, false);
+        window.removeEventListener("resize", this._setWidth, false);
     }
 
-    _setDimensions() {
+    _setWidth() {
         let width = window.innerWidth;
-
         if (width !== this.state.width) {
             this.setState({width});
         }
     }
 
-    _onToggleIgnored() {
-        this.setState({
-            showIgnored: !this.state.showIgnored
-        });
-    }
-
     render() {
-        let {linkedAccounts, myIgnoredAccounts} = this.props;
-        let {width, showIgnored} = this.state;
+        let {width} = this.state;
+        let names = this.props.linkedAccounts.toArray().sort();
 
-        let names = linkedAccounts.toArray().sort();
-        let ignored = myIgnoredAccounts.toArray().sort();
-
-        let accountCount = linkedAccounts.size + myIgnoredAccounts.size;
-
-        let featuredMarkets = [
-            ["BTS", "CNY"],
-            ["OPEN.BTC", "BTS", false],
-            ["OPEN.BTC", "OPEN.STEEM"],
-            ["BTS", "ICOO"],
-            ["BTS", "BLOCKPAY"],
-            ["BTS", "OBITS"],
-            ["BTS", "USD"],
-            ["BTS", "GOLD"],
-            ["BTS", "SILVER"],
-            ["BTS", "BKT"],
-            ["OPEN.BTC", "OPEN.DGD", false],
-            ["BTS", "BTWTY"],
-            ["BTS", "BTSR"],
-            ["OPEN.BTC", "OPEN.INCNT", false],
-            [ "BTS", "OPEN.ETH"],
-            ["CNY", "USD"]
-            // ["BTS", "SILVER"]
-            // ["BTS", "EUR"]
-        ];
-
-        let newAssets = [
-            "OPEN.DAO",
-            "OPEN.LISK"
-        ];
-
-        let markets = featuredMarkets.map((pair, index) => {
-
-            let className = "";
-            if (index > 3) {
-                className += "show-for-medium";
-            }
-            if (index > 8) {
-                className += " show-for-large";
-            }
-
-            return (
-                <MarketCard
-                    key={pair[0] + "_" + pair[1]}
-                    new={newAssets.indexOf(pair[1]) !== -1}
-                    className={className}
-                    quote={pair[0]}
-                    base={pair[1]}
-                    invert={pair[2]}
-                />
-            );
-        });
-
+        let outerClass = "grid-block page-layout no-overflow " + (width < 750 ? "vertical" : "horizontal");
+        let firstDiv = "grid-block no-overflow " + (width < 750 ? "" : "shrink");
         return (
-            <div ref="wrapper" className="grid-block page-layout vertical">
-                <div ref="container" className="grid-container" style={{padding: "25px 10px 0 10px"}}>
-                    <Translate content="exchange.featured" component="h4" />
-                    <div className="grid-block small-up-1 medium-up-3 large-up-4 no-overflow">
-                        {markets}
+            <div className={outerClass}>
+                <div className={firstDiv} style={{minWidth: "50%"}}>
+                    <div ref="container" className="grid-content" style={{paddingLeft: "0.25rem", paddingRight: "0.25rem"}}>
+                        <h4 style={{paddingLeft: "1rem"}}><Translate content="account.overview" /></h4>
+                        <AccountsList accounts={Immutable.List(names)} width={width} />
                     </div>
-
-                    {accountCount ? <div className="generic-bordered-box" style={{marginBottom: 5}}>
-                        <div className="block-content-header" style={{marginBottom: 15}}>
-                            <Translate content="account.accounts" />
-                        </div>
-                        <div className="box-content">
-                            <DashboardList accounts={Immutable.List(names)} width={width} />
-                            {myIgnoredAccounts.size ?
-                                <table className="table table-hover" style={{fontSize: "0.85rem"}}>
-                                    <tbody>
-                                        <tr>
-                                            <td colSpan={width < 750 ? "3" : "4"} style={{textAlign: "right"}}>
-                                                <div onClick={this._onToggleIgnored.bind(this)} className="button outline">
-                                                    <Translate content={`account.${ showIgnored ? "hide_ignored" : "show_ignored" }`} />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table> : null}
-                            {showIgnored ? <DashboardList compact accounts={Immutable.List(ignored)} width={width} /> : null}
-                        </div>
-                    </div> : null}
-
-                    {accountCount ? <RecentTransactions
-                        style={{marginBottom: 20, marginTop: 20}}
-                        accountsList={this.props.linkedAccounts}
-                        limit={10}
-                        compactView={false}
-                        fullHeight={true}
-                        showFilters={true}
-                    /> : null}
-
+                </div>
+                <div className="grid-block right-column no-overflow">
+                    <div ref="transactions" className="grid-content" style={{paddingLeft: "0.5rem", paddingRight: "0.25rem"}}>
+                        <h4 style={{paddingLeft: "1rem"}}><Translate content="account.recent" /></h4>
+                        <RecentTransactions accountsList={this.props.linkedAccounts} limit={25} compactView={true}/>
+                    </div>
                 </div>
             </div>);
     }

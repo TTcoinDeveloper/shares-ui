@@ -3,14 +3,14 @@ Graphene GUI
 
 ## Prerequisites
 
-BitShares GUI depends on Node.js.
+Graphene GUI depends on Node.js.
 
 On Ubuntu you can install Node.js via the following command:
 ```
 sudo apt-get install git nodejs-legacy npm
 ```
 
-In order to use the GUI you will need to have a functioning witness node from the BitShares running with a websocket endpoint at localhost:8090. Instructions for this can be found here: https://github.com/cryptonomex/graphene 
+In order to use the GUI you will need to have a functioning witness node from the Graphene toolkit running with a websocket endpoint at localhost:8090. Instructions for this can be found here: https://github.com/cryptonomex/graphene 
 
 While waiting for the public testnet you may want to run a local chain, to do so add the following to your config.ini in ./witness_node_data_dir :
 
@@ -141,19 +141,3 @@ npm test
 - Old Milestone is closed
 - New Milestone is activated (rinse lather repeat)
 
-### Coding style guideline
-
-Our style guideline is based on 'Airbnb JavaScript Style Guide' (https://github.com/airbnb/javascript), with few exceptions:
-
-- Strings are double quoted
-- Additional trailing comma (in arrays and objects declaration) is optional
-- 4 spaces tabs
-- Spaces inside curly braces are optional
-
-We strongly encourage to use _eslint_ to make sure the code adhere to our style guidelines.
-
-To install eslint and its dependencies, run:
-
-```
-npm install -g eslint-config-airbnb eslint-plugin-react eslint babel-eslint
-```

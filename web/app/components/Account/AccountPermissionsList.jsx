@@ -1,73 +1,50 @@
 import React from "react";
-import {Link} from "react-router/es";
 import AccountSelector from "./AccountSelector";
 import Translate from "react-translate-component";
+import Immutable from "immutable";
 import AccountImage from "./AccountImage";
+import ChainStore from "api/ChainStore";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
 import Icon from "../Icon/Icon";
-import PrivateKeyView from "components/PrivateKeyView";
+import PrivateKeyView from "components/PrivateKeyView"
 import counterpart from "counterpart";
-import utils from "common/utils";
-import AddressIndex from "stores/AddressIndex";
 
 class AccountPermissionRow extends React.Component {
     static propTypes = {
         account: React.PropTypes.object,
         pubkey: React.PropTypes.string,
-        address: React.PropTypes.string,
         onRemoveItem: React.PropTypes.func.isRequired,
         weights: React.PropTypes.object
-    };
-
-    shouldComponentUpdate(nextProps) {
-        return !utils.are_equal_shallow(nextProps, this.props);
     }
-
-    _lookUpPubKeyForAddress(address) {
-        var addresses = AddressIndex.getState().addresses;
-        var pubkey = addresses.get(address);
-        console.log("pubkey:", pubkey);
-        return pubkey;
+    onRemoveItem(item_id){
+        this.props.onRemoveItem(item_id);
     }
-
     render() {
         let name, item_id, name_or_key;
-        let suffix = "_accounts";
-        let pubKey = this.props.pubkey;;
-
         if (this.props.account) {
             name = this.props.account.get("name");
             item_id = this.props.account.get("id");
-            name_or_key = <Link to={`account/${name}/permissions`}>{name}</Link>;
-        } else if (pubKey) {
+            name_or_key = name;
+        } else {
             name = item_id = this.props.pubkey;
             name_or_key = <PrivateKeyView pubkey={this.props.pubkey}>{this.props.pubkey}</PrivateKeyView>
-            suffix = "_keys";
-        } else if (this.props.address) {
-            pubKey = this._lookUpPubKeyForAddress(this.props.address);
-            item_id = this.props.address;
-            name_or_key = !pubKey ? this.props.address : <PrivateKeyView pubkey={pubKey}>{pubKey}</PrivateKeyView>;
-            suffix = "_addresses";
         }
-
         return (
             <tr key={name}>
                 <td>
-                { this.props.account ?
+                    { this.props.account ?
                     <AccountImage size={{height: 30, width: 30}} account={name}/>
-                : pubKey ? (
-                    <div className="account-image">
-                        <PrivateKeyView pubkey={pubKey}>
+                    : <div className="account-image">
+                        <PrivateKeyView pubkey={this.props.pubkey}>
                             <Icon name="key" size="1x"/>
-                        </PrivateKeyView>
-                    </div>)
-                : null}
+                        </PrivateKeyView></div>
+                    }
                 </td>
                 <td>{name_or_key}</td>
                 <td>{this.props.weights[item_id]}</td>
                 <td>
-                    <button className="button outline" onClick={this.props.onRemoveItem.bind(this, item_id, suffix)}>
+                    <button className="button outline" onClick={this.onRemoveItem.bind(this, item_id)}>
                         <Translate content="account.votes.remove_witness"/></button>
                 </td>
             </tr>
@@ -75,6 +52,7 @@ class AccountPermissionRow extends React.Component {
     }
 }
 
+@BindToChainState({keep_updating: true})
 class AccountPermissionsList extends React.Component {
 
     static propTypes = {
@@ -86,7 +64,7 @@ class AccountPermissionsList extends React.Component {
         placeholder: React.PropTypes.string, // the placeholder text to be displayed when there is no user_input
         tabIndex: React.PropTypes.number, // tabindex property to be passed to input tag
         weights: React.PropTypes.object // weights: hash of {account id -> weight}
-    };
+    }
 
     constructor(props) {
         super(props);
@@ -157,10 +135,6 @@ class AccountPermissionsList extends React.Component {
             return (<AccountPermissionRow key={key++} pubkey={k} weights={this.props.weights} onRemoveItem={this.props.onRemoveItem}/>)
         });
 
-        let address_rows = this.props.addresses.map(k => {
-            return (<AccountPermissionRow key={key++} address={k} weights={this.props.weights} onRemoveItem={this.props.onRemoveItem}/>)
-        });
-
         let error = this.state.error;
         if(!error && this.state.selected_item && this.props.accounts.indexOf(this.state.selected_item) !== -1)
             error = counterpart.translate("account.perm.warning3");
@@ -171,21 +145,18 @@ class AccountPermissionsList extends React.Component {
 
         return (
             <div>
-                <AccountSelector
-                    label={this.props.label}
-                    error={error}
-                    placeholder={this.props.placeholder}
-                    account={this.state.item_name_input}
-                    accountName={this.state.item_name_input}
-                    onChange={this.onItemChange}
-                    onAccountChanged={this.onItemAccountChange}
-                    onAction={this.onAddItem}
-                    action_label="account.votes.add_witness"
-                    tabIndex={this.props.tabIndex}
-                    allowPubKey={true}
-                    disableActionButton={!this.state.weight_input}
-                    allowUppercase={true}
-                >
+                <AccountSelector label={this.props.label}
+                                 error={error}
+                                 placeholder={this.props.placeholder}
+                                 account={this.state.item_name_input}
+                                 accountName={this.state.item_name_input}
+                                 onChange={this.onItemChange}
+                                 onAccountChanged={this.onItemAccountChange}
+                                 onAction={this.onAddItem}
+                                 action_label="account.votes.add_witness"
+                                 tabIndex={this.props.tabIndex}
+                                 allowPubKey={true}
+                                 disableActionButton={!this.state.weight_input}>
                     <input value={this.state.weight_input}
                            onChange={this.onWeightChanged.bind(this)}
                            className="weight-input"
@@ -207,7 +178,6 @@ class AccountPermissionsList extends React.Component {
                     <tbody>
                     {account_rows}
                     {key_rows}
-                    {address_rows}
                     </tbody>
                 </table>
             </div>
@@ -216,4 +186,4 @@ class AccountPermissionsList extends React.Component {
 
 }
 
-export default BindToChainState(AccountPermissionsList, {keep_updating: true});
+export default AccountPermissionsList;

@@ -1,10 +1,10 @@
 require("./assets/loader-dev");
-if (!window.Intl) { // Safari polyfill
-    require.ensure(["intl"], require => {
-        window.Intl = require("intl");
+if (!window.Intl) {
+    require(['intl'], Intl => {
         Intl.__addLocaleData(require("./assets/intl-data/en.json"));
-        require("index-dev.js");
+        window.Intl = Intl;
+        require("App.jsx");
     });
 } else {
-    require("index-dev.js");
+    require("App.jsx");
 }

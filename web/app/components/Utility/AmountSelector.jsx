@@ -1,10 +1,12 @@
 import React from "react";
 import Translate from "react-translate-component";
-import {ChainStore} from "graphenejs-lib/es";
+import ChainStore from "api/ChainStore";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
 import FormattedAsset from "./FormattedAsset";
+import utils from "common/utils";
 
+@BindToChainState()
 class AssetOption extends React.Component {
 
     static propTypes = {
@@ -18,7 +20,6 @@ class AssetOption extends React.Component {
     }
 
 }
-AssetOption = BindToChainState(AssetOption);
 
 class AssetSelector extends React.Component {
 
@@ -26,12 +27,13 @@ class AssetSelector extends React.Component {
         value: React.PropTypes.string, // asset id
         assets: React.PropTypes.array, // a translation key for the label
         onChange: React.PropTypes.func
-    };
+    }
 
     constructor(props) {
         super(props);
+
         this.state = {
-            selected: props.value || props.assets[0]
+            selected: props.assets[0]
         }
     }
 
@@ -54,7 +56,7 @@ class AssetSelector extends React.Component {
 
         } else {
             return (
-                <select value={this.state.selected} className="form-control" onChange={this.onChange.bind(this)}>
+                <select value={this.state.selected} defaultValue={this.props.value} className="form-control" onChange={this.onChange.bind(this)}>
                     {options}
                 </select>
                 );
@@ -64,6 +66,7 @@ class AssetSelector extends React.Component {
 
 }
 
+@BindToChainState()
 class AmountSelector extends React.Component {
 
     static propTypes = {
@@ -73,16 +76,13 @@ class AmountSelector extends React.Component {
         amount: React.PropTypes.any,
         placeholder: React.PropTypes.string,
         onChange: React.PropTypes.func.isRequired,
+        display_balance: React.PropTypes.object,
         tabIndex: React.PropTypes.number
     };
 
     static defaultProps = {
         disabled: false
     };
-
-    componentDidMount() {
-        this.onAssetChange(this.props.asset);
-    }
 
     formatAmount(v) {
         // TODO: use asset's precision to format the number
@@ -119,31 +119,32 @@ class AmountSelector extends React.Component {
 
     render() {
         let value = this.formatAmount(this.props.amount);
+        
         return (
             <div className="amount-selector" style={this.props.style}>
                 <div className="float-right">{this.props.display_balance}</div>
                 <Translate component="label" content={this.props.label}/>
                 <div className="inline-label">
-                    <input
+                    <input 
                            disabled={this.props.disabled}
                            type="text"
-                           value={value || ""}
+                           value={value}
                            placeholder={this.props.placeholder}
                            onChange={this._onChange.bind(this) }
                            tabIndex={this.props.tabIndex}/>
                    <span className="form-label select">
                        <AssetSelector
-                           ref={this.props.refCallback}
-                           value={this.props.asset.get("id")}
+                           ref={this.props.refCallback}                  
+                           value={this.props.assetValue}
                            assets={this.props.assets}
-                           onChange={this.onAssetChange.bind(this)}
+                           onChange={this.onAssetChange.bind(this)}                           
                        />
                    </span>
                 </div>
             </div>
         )
     }
+
 }
-AmountSelector = BindToChainState(AmountSelector);
 
 export default AmountSelector;

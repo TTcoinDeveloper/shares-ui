@@ -1,7 +1,7 @@
+
 import React from "react";
-// var Highcharts = require("highcharts/highstock");
-import ReactHighstock from "react-highcharts/dist/ReactHighstock";
-import {takeRight} from "lodash";
+import Highcharts from "react-highcharts/bundle/highstock";
+import _ from "lodash";
 import counterpart from "counterpart";
 
 class BlocktimeChart extends React.Component {
@@ -18,7 +18,7 @@ class BlocktimeChart extends React.Component {
         if (chart) {
             let {blockTimes, colors} = this._getData(nextProps);
             let series = chart.series[0];
-            let finalValue = series.xData[series.xData.length -1];
+                let finalValue = series.xData[series.xData.length -1];
 
             if (series.xData.length) {
                 // console.log(chart, "series:", series.data, "finalValue:", finalValue);
@@ -49,7 +49,7 @@ class BlocktimeChart extends React.Component {
         });
 
         if (blockTimes && blockTimes.length) {
-            blockTimes = takeRight(blockTimes, 30);
+            blockTimes = _.takeRight(blockTimes, 30);
         }
 
         let colors = blockTimes.map(entry => {
@@ -147,7 +147,7 @@ class BlocktimeChart extends React.Component {
         };
 
         return (
-            blockTimes.length ? <ReactHighstock ref="chart" config={config}/> : null
+            blockTimes.length ? <Highcharts ref="chart" config={config}/> : null
         );
     }
 };

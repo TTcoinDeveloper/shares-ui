@@ -1,9 +1,14 @@
 import React from "react";
+import utils from "common/utils";
+import validation from "common/validation";
+import AccountImage from "../Account/AccountImage";
 import Translate from "react-translate-component";
-import {ChainValidation} from "graphenejs-lib/es";
+import ChainStore from "api/ChainStore";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
+import classnames from "classnames";
 import counterpart from "counterpart";
+import Icon from "../Icon/Icon";
 
 /**
  * @brief Allows the user to enter an account by name or #ID
@@ -13,6 +18,7 @@ import counterpart from "counterpart";
  *
  */
 
+@BindToChainState()
 class AssetSelector extends React.Component {
 
     static propTypes = {
@@ -25,11 +31,7 @@ class AssetSelector extends React.Component {
         asset: ChainTypes.ChainAsset, // account object retrieved via BindToChainState decorator (not input)
         tabIndex: React.PropTypes.number, // tabindex property to be passed to input tag
         disableActionButton: React.PropTypes.string // use it if you need to disable action button
-    };
-
-    static defaultProps = {
-        disabled: false
-    };
+    }
 
     // can be used in parent component: this.refs.asset_selector.getAsset()
     getAsset() {
@@ -46,7 +48,7 @@ class AssetSelector extends React.Component {
     getNameType(value) {
         if(!value) return null;
         // if(value[0] === "#" && utils.is_object_id("1.2." + value.substring(1))) return "id";
-        if(!ChainValidation.is_valid_symbol_error(value, true)) return "symbol";
+        if(!validation.is_valid_symbol_error(value, true)) return "symbol";
         return null;
     }
 
@@ -78,16 +80,12 @@ class AssetSelector extends React.Component {
     }
 
     render() {
-        let {disabled} = this.props;
         let error; // = this.getError();
         let lookup_display;
-        if (!disabled) {
-            if (this.props.asset) {
-                lookup_display = this.props.asset.get("symbol");
-            } else if (!error && this.props.assetInput) {
-                error = counterpart.translate("explorer.asset.not_found", {name: this.props.assetInput});
-            }
-        }
+        if (this.props.asset) {
+            lookup_display = this.props.asset.get("symbol");
+        } else if (!error && this.props.assetInput) error = counterpart.translate("explorer.asset.not_found", {name: this.props.assetInput});
+
         return (
             <div className="account-selector no-overflow" style={this.props.style}>
 
@@ -98,16 +96,15 @@ class AssetSelector extends React.Component {
                     </div>
                     <div className="input-area">
                       <span className="inline-label">
-                      <input
-                             disabled={this.props.disabled}
-                             type="text"
-                             value={this.props.assetInput || ""}
+                      <input type="text"
+                             value={this.props.assetInput}
+                             defaultValue={this.props.assetInput}
                              placeholder={counterpart.translate("explorer.assets.symbol")}
                              ref="user_input"
                              onChange={this.onInputChanged.bind(this)}
                              onKeyDown={this.onKeyDown.bind(this)}
                              tabIndex={this.props.tabIndex}/>
-                          { this.props.children }
+                          { this.props.children }                          
                       </span>
                     </div>
                     <div className="error-area" style={{paddingBottom: "10px"}}>
@@ -115,9 +112,9 @@ class AssetSelector extends React.Component {
                     </div>
                 </div>
             </div>
-        );
+        )
 
     }
 
 }
-export default BindToChainState(AssetSelector);
+export default AssetSelector;

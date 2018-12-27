@@ -9,6 +9,7 @@ import BindToChainState from "./BindToChainState";
  *  Expects one property, 'balance' which should be a balance_object id
  */
 
+@BindToChainState({keep_updating: true})
 class VestingBalance extends React.Component {
 
     static propTypes = {
@@ -16,10 +17,10 @@ class VestingBalance extends React.Component {
     }
 
     render() {
-        let amount = Number(this.props.balance.getIn(["balance","amount"]));
-        let type = this.props.balance.getIn(["balance","asset_id"]);
-        return <FormattedAsset amount={amount} asset={type} decimalOffset={this.props.decimalOffset || 0}/>;
+        let amount = Number(this.props.balance.getIn(['balance','amount']));
+        let type = this.props.balance.getIn(['balance','asset_id']);
+        return (<FormattedAsset amount={amount} asset={type}/>);
     }
 }
 
-export default BindToChainState(VestingBalance, {keep_updating: true});
+export default VestingBalance;

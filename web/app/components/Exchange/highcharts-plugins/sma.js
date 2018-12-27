@@ -1,5 +1,3 @@
-import Highcharts from "highcharts/highstock";
-
 (function (HC) {
         /***
         

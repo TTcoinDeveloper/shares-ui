@@ -1,15 +1,17 @@
 import React from "react";
 import Panel from "react-foundation-apps/src/panel";
 import Trigger from "react-foundation-apps/src/trigger";
-import {Link} from "react-router/es";
+import {Link} from "react-router";
 import ZfApi from "react-foundation-apps/src/utils/foundation-api";
 import Translate from "react-translate-component";
 import AccountStore from "stores/AccountStore";
-import { connect } from "alt-react";
+import connectToStores from "alt/utils/connectToStores";
 import WalletUnlockStore from "stores/WalletUnlockStore";
 import WalletManagerStore from "stores/WalletManagerStore";
 import SettingsStore from "stores/SettingsStore";
+import cnames from "classnames";
 
+@connectToStores
 class MobileMenu extends React.Component {
     constructor() {
         super();
@@ -17,8 +19,22 @@ class MobileMenu extends React.Component {
     }
 
     static contextTypes = {
-        router: React.PropTypes.object
+      history: React.PropTypes.object
     };
+
+    static getStores() {
+      return [AccountStore, WalletUnlockStore, WalletManagerStore, SettingsStore]
+    }
+
+    static getPropsFromStores() {
+      return {
+        linkedAccounts: AccountStore.getState().linkedAccounts,
+        currentAccount: AccountStore.getState().currentAccount,
+        locked: WalletUnlockStore.getState().locked,
+        current_wallet: WalletManagerStore.getState().current_wallet,
+        lastMarket: SettingsStore.getState().viewSettings.get("lastMarket")
+      }
+    }
 
     onClick() {
         ZfApi.publish("mobile-menu", "close");
@@ -26,30 +42,30 @@ class MobileMenu extends React.Component {
 
     _onNavigate(route, e) {
         e.preventDefault();
-        this.context.router.push(route);
+        this.context.history.pushState(null, route);
         ZfApi.publish("mobile-menu", "close");
     }
 
     render() {
-        let {id, currentAccount, linkedAccounts, myAccounts} = this.props;
+        let id = this.props.id;
         let accounts = null;
-
+        let linkedAccounts = AccountStore.getState().linkedAccounts;
         if(linkedAccounts.size > 1) {
             accounts = linkedAccounts.map( a => {
                 return <li key={a} onClick={this.onClick}><Link to={`/account/${a}/overview`}>{a}</Link></li>;
             });
         }  else if (linkedAccounts.size === 1) {
-            accounts = <li key="account" onClick={this.onClick}><Link to={`/account/${linkedAccounts.first()}/overview`}><Translate content="header.account" /></Link></li>;
+            accounts = <li key="account" onClick={this.onClick}><Link to={`/account/${linkedAccounts.first()}/overview`}><Translate component="span" content="header.account" /></Link></li>;
         }
 
         let linkToAccountOrDashboard;
-        if (linkedAccounts.size > 1) linkToAccountOrDashboard = <a onClick={this._onNavigate.bind(this, "/dashboard")}><Translate content="header.dashboard" /></a>;
-        else if (linkedAccounts.size === 1) linkToAccountOrDashboard = <a onClick={this._onNavigate.bind(this, `/account/${linkedAccounts.first()}/overview`)}><Translate content="header.account" /></a>;
+        if (linkedAccounts.size > 1) linkToAccountOrDashboard = <a onClick={this._onNavigate.bind(this, "/dashboard")}><Translate component="span" content="header.dashboard" /></a>;
+        else if (linkedAccounts.size === 1) linkToAccountOrDashboard = <a onClick={this._onNavigate.bind(this, `/account/${linkedAccounts.first()}/overview`)}><Translate component="span" content="header.account" /></a>;
         else linkToAccountOrDashboard = <Link to="/create-account">Create Account</Link>;
 
         let tradeLink = this.props.lastMarket ?
-            <a onClick={this._onNavigate.bind(this, `/market/${this.props.lastMarket}`)}><Translate content="header.exchange" /></a> :
-            <a onClick={this._onNavigate.bind(this, "/explorer/markets")}><Translate content="header.exchange" /></a>;
+            <a onClick={this._onNavigate.bind(this, `/market/${this.props.lastMarket}`)}><Translate component="span" content="header.exchange" /></a> :
+            <a onClick={this._onNavigate.bind(this, "/explorer/markets")}><Translate component="span" content="header.exchange" /></a>
 
         return (
             <Panel id={id} position="left">
@@ -60,13 +76,10 @@ class MobileMenu extends React.Component {
                 <section style={{marginTop: "3rem"}} className="block-list">
                     <ul>
                         <li>{linkToAccountOrDashboard}</li>
-                        <li onClick={this.onClick}><Link to="transfer"><Translate content="header.payments"/></Link></li>
+                        <li><a onClick={this._onNavigate.bind(this, "/explorer")}><Translate component="span" content="header.explorer" /></a></li>
                         {linkedAccounts.size === 0 ? null :
                           <li>{tradeLink}</li>}
-                        {currentAccount && myAccounts.indexOf(currentAccount) !== -1 ? <li onClick={this.onClick}><Link to={"/deposit-withdraw/"}><Translate content="account.deposit_withdraw"/></Link></li> : null}
-                        <li><a onClick={this._onNavigate.bind(this, "/explorer")}><Translate content="header.explorer" /></a></li>
-                        <li onClick={this.onClick}><Link to="settings"><Translate content="header.settings"/></Link></li>
-
+                        <li onClick={this.onClick}><Link to="transfer"><Translate component="span" content="header.payments"/></Link></li>
                     </ul>
                 </section>
 
@@ -82,18 +95,4 @@ class MobileMenu extends React.Component {
     }
 }
 
-export default connect(MobileMenu, {
-    listenTo() {
-        return [AccountStore, WalletUnlockStore, WalletManagerStore, SettingsStore];
-    },
-    getProps() {
-        return {
-            linkedAccounts: AccountStore.getState().linkedAccounts,
-            currentAccount: AccountStore.getState().currentAccount,
-            locked: WalletUnlockStore.getState().locked,
-            current_wallet: WalletManagerStore.getState().current_wallet,
-            lastMarket: SettingsStore.getState().viewSettings.get("lastMarket"),
-            myAccounts: AccountStore.getMyAccounts()
-        };
-    }
-});
+export default MobileMenu;

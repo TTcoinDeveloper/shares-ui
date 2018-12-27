@@ -2,7 +2,6 @@ import React from "react";
 import BindToChainState from "../Utility/BindToChainState";
 import ChainTypes from "../Utility/ChainTypes";
 import TimeAgo from "../Utility/TimeAgo";
-import utils from "common/utils";
 
 /**
  * @brief displays block's date and time based on block number
@@ -11,18 +10,19 @@ import utils from "common/utils";
  * Note, it doesn't fetch block, just calculates time based on number alone.
  **/
 
+@BindToChainState({keep_updating:true})
 class BlockTime extends React.Component {
 
     static propTypes = {
         block_number: React.PropTypes.number.isRequired,
         globalObject: ChainTypes.ChainObject.isRequired,
         dynGlobalObject: ChainTypes.ChainObject.isRequired
-    };
+    }
 
     static defaultProps = {
         globalObject: "2.0.0",
         dynGlobalObject: "2.1.0"
-    };
+    }
 
     constructor(props) {
         super(props);
@@ -34,7 +34,12 @@ class BlockTime extends React.Component {
     }
 
     calcTime(block_number) {
-        this.setState({time: utils.calc_block_time(block_number, this.props.globalObject, this.props.dynGlobalObject)});
+        let block_interval = this.props.globalObject.get("parameters").get("block_interval");
+        let head_block = this.props.dynGlobalObject.get("head_block_number");
+        let head_block_time = new Date(this.props.dynGlobalObject.get("time") + "+00:00");
+        let seconds_below = (head_block - block_number) * block_interval;
+        let time = new Date(head_block_time - seconds_below * 1000);
+        this.setState({time});
     }
 
     componentWillReceiveProps(next_props) {
@@ -58,6 +63,5 @@ class BlockTime extends React.Component {
         );
     }
 }
-BlockTime = BindToChainState(BlockTime, {keep_updating: true});
 
 export default BlockTime;

@@ -5,17 +5,21 @@ import Trigger from "react-foundation-apps/src/trigger";
 import Translate from "react-translate-component";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
+import FormattedAsset from "../Utility/FormattedAsset";
 import utils from "common/utils";
+import classNames from "classnames";
 import BalanceComponent from "../Utility/BalanceComponent";
-import WalletApi from "api/WalletApi";
+import WalletApi from "rpc_api/WalletApi";
 import WalletDb from "stores/WalletDb";
+import FormattedPrice from "../Utility/FormattedPrice";
 import counterpart from "counterpart";
-import {ChainStore} from "graphenejs-lib/es";
-import AmountSelector from "../Utility/AmountSelector";
 
 let wallet_api = new WalletApi();
 
+import AccountSelector from "../Account/AccountSelector";
+import AmountSelector from "../Utility/AmountSelector";
 
+@BindToChainState({keep_updating: true})
 class ModalContent extends React.Component {
     static propTypes = {
         asset: ChainTypes.ChainAsset.isRequired,
@@ -79,7 +83,7 @@ class ModalContent extends React.Component {
 
         let currentBalance = null, balanceAmount = 0;
 
-        account_balances && account_balances.forEach( balance => {
+        account_balances.forEach( balance => {
             let balanceObject = ChainStore.getObject(balance);
             if (!balanceObject.get("balance")) {
                 return null;
@@ -100,7 +104,7 @@ class ModalContent extends React.Component {
                 <BalanceComponent balance={currentBalance}/>
             </span>) : null;
 
-        return (
+        return ( 
             <form className="grid-block vertical full-width-content">
                 <Translate component="h3" content="modal.settle.title" asset={asset.get("symbol")} />
                 <div className="grid-container " style={{paddingTop: "2rem"}}>
@@ -122,8 +126,9 @@ class ModalContent extends React.Component {
             </form>
         );
     }
+
 }
-ModalContent = BindToChainState(ModalContent, {keep_updating: true});
+
 
 class SettleModal extends React.Component {
 
@@ -132,7 +137,7 @@ class SettleModal extends React.Component {
     }
 
     render() {
-        return (
+        return ( 
             <Modal id="settlement_modal" overlay={true} ref="settlement_modal">
                 <Trigger close="settlement_modal">
                     <a href="#" className="close-button">&times;</a>

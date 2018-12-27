@@ -1,10 +1,11 @@
 import React from "react";
 import BalanceComponent from "../Utility/BalanceComponent";
 import AccountImage from "../Account/AccountImage";
+import {Link, PropTypes} from "react-router";
 import ChainTypes from "../Utility/ChainTypes";
 import BindToChainState from "../Utility/BindToChainState";
 import AccountStore from "stores/AccountStore";
-import {ChainStore} from "graphenejs-lib/es";
+import ChainStore from "api/ChainStore";
 
 /**
  *  @brief displays the summary of a given account in a condenced view (for the dashboard)
@@ -14,20 +15,27 @@ import {ChainStore} from "graphenejs-lib/es";
  *  { account: ${name_or_id} }
  */
 
+@BindToChainState()
 class AccountCard extends React.Component {
 
     static contextTypes = {
-        router: React.PropTypes.object.isRequired
-    }
+        history: PropTypes.history
+    };
 
     static propTypes = {
         account: ChainTypes.ChainAccount.isRequired
     };
 
+
+    constructor(props) 
+    {
+       super(props)
+    }
+
     onCardClick(e) {
         e.preventDefault();
         let name = this.props.account.get('name');
-        this.context.router.push(`/account/${name}/overview/`);
+        this.context.history.pushState(null, `/account/${name}/overview/`);
     }
 
     render() {
@@ -68,4 +76,4 @@ class AccountCard extends React.Component {
     }
 }
 
-export default BindToChainState(AccountCard);
+export default AccountCard;

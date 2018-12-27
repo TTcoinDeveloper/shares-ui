@@ -11,8 +11,6 @@
 // JSLint options:
 /*global Highcharts*/
 
-import Highcharts from "highcharts/highstock";
-
 (function (H) {
     'use strict';
     var each = H.each,

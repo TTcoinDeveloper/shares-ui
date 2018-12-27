@@ -1,7 +1,6 @@
 import utils from "common/utils";
 import Immutable from "immutable";
-import { ChainTypes as grapheneChainTypes} from "graphenejs-lib/es";
-const {object_type} = grapheneChainTypes;
+import {object_type} from "chain/chain_types";
 
 function createChainableTypeChecker(validate) {
     function checkType(isRequired, props, propName, componentName, location) {

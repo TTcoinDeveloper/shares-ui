@@ -9,7 +9,6 @@
 // JSLint options:
 /*global Highcharts, document */
 
-import Highcharts from "highcharts/highstock";
 import utils from "common/utils";
 
 (function(H) {
@@ -33,11 +32,11 @@ import utils from "common/utils";
     });
 
     function renderCurrentPriceIndicator(chart) {
-        if (!chart.series[1] || (chart.series[1] && chart.series[1].yData && !chart.series[1].yData.length)) {
+        if (!chart.series[0] || (chart.series[0] && chart.series[0].yData && !chart.series[0].yData.length)) {
             return;
         }
         var priceYAxis = chart.yAxis[0],
-            priceSeries = chart.series[1],
+            priceSeries = chart.series[0],
             priceData = priceSeries.yData,
             currentPrice = priceData[priceData.length - 1][3],
 
@@ -87,8 +86,7 @@ import utils from "common/utils";
         options = merge(true, defaultOptions, options);
 
         width = priceYAxis.opposite ? (marginRight ? marginRight : 40) : (marginLeft ? marginLeft : 40);
-
-        x = priceYAxis.opposite ? (chartWidth - width) : marginLeft;
+        x = priceYAxis.opposite ? chartWidth - width : marginLeft;
         y = priceYAxis.toPixels(currentPrice);
 
         if (!x || !y) {
@@ -129,8 +127,6 @@ import utils from "common/utils";
                     .attr({
                     fill: options.backgroundColor,
                     stroke: options.borderColor,
-                    height: 15,
-                    y: y - (height / 2) - 3,
                     zIndex: 1,
                         'stroke-width': 1
                 })
@@ -149,22 +145,18 @@ import utils from "common/utils";
 
                 // adjust
                 label.animate({
-                    x: x + 5,
                     y: y + (height / 4)
                 }, 0);
             } else {
-
                 currentPriceIndicator.label.animate({
                     text: utils.format_number(currentPrice, options.precision),
-                    x: x + 5,
                     y: y
                 }, 0);
 
                 height = currentPriceIndicator.label.getBBox().height;
 
                 currentPriceIndicator.box.animate({
-                    x: x,
-                    y: y - (height / 2) - 3
+                    y: y - (height / 2)
                 }, 0);
 
                 currentPriceIndicator.line.animate({
@@ -192,7 +184,7 @@ import utils from "common/utils";
             }
         }
     };
-
+    
     /**
      * Convert dash style name to array to be used a the value
      * for SVG element's "stroke-dasharray" attribute

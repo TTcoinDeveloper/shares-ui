@@ -1,9 +1,6 @@
 require("./stylesheets/app.scss");
-require("file-loader?name=index.html!./" + ((__ELECTRON__ || __HASH_HISTORY__) ? "index-electron" : "index") + ".html");
-require("file-loader?name=favicon.ico!./favicon.ico");
-require("file-loader?name=dictionary.json!common/dictionary_en.json");
-require("babel-polyfill");
+require("file?name=index.html!./index.html");
+require("file?name=favicon.ico!./favicon.ico");
+require("babel/polyfill");
 require("whatwg-fetch");
 require("indexeddbshim");
-require("./asset-symbols/symbols.js");
-require("./locales/locales.js");

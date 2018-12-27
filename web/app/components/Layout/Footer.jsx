@@ -3,39 +3,39 @@ import AltContainer from "alt-container";
 import Translate from "react-translate-component";
 import BindToChainState from "../Utility/BindToChainState";
 import ChainTypes from "../Utility/ChainTypes";
-import CachedPropertyStore from "stores/CachedPropertyStore";
+import CachedPropertyStore from "stores/CachedPropertyStore"
+import CachedPropertyActions from "actions/CachedPropertyActions"
 import BlockchainStore from "stores/BlockchainStore";
-import {ChainStore} from "graphenejs-lib/es";
+import ChainStore from "api/ChainStore"
 import WalletDb from "stores/WalletDb";
 import TimeAgo from "../Utility/TimeAgo";
 import Icon from "../Icon/Icon";
+import ReactTooltip from "react-tooltip"
 
+@BindToChainState({keep_updating: true})
 class Footer extends React.Component {
 
     static propTypes = {
         dynGlobalObject: ChainTypes.ChainObject.isRequired,
         synced: React.PropTypes.bool.isRequired
-    };
+    }
 
     static defaultProps = {
         dynGlobalObject: "2.1.0"
-    };
+    }
 
     static contextTypes = {
-        router: React.PropTypes.object
-    };
+        history: React.PropTypes.object
+    }
 
-    shouldComponentUpdate(nextProps) {
-        return (
-            nextProps.dynGlobalObject !== this.props.dynGlobalObject ||
-            nextProps.backup_recommended !== this.props.backup_recommended ||
-            nextProps.rpc_connection_status !== this.props.rpc_connection_status ||
-            nextProps.synced !== this.props.synced
-       );
+    shouldComponentUpdate(nextProps, nextState) {
+        return nextProps.dynGlobalObject !== this.props.dynGlobalObject ||
+               nextProps.backup_recommended !== this.props.backup_recommended ||
+               nextProps.rpc_connection_status !== this.props.rpc_connection_status ||
+               nextProps.synced !== this.props.synced;
     }
 
     render() {
-
         let block_height = this.props.dynGlobalObject.get("head_block_number");
         let block_time = this.props.dynGlobalObject.get("time") + "+00:00";
         // console.log("block_time", block_time)
@@ -51,20 +51,20 @@ class Footer extends React.Component {
                             <Translate content="footer.title" /><span className="version">{version}</span>
                         </div>
                     </div>
-                    {this.props.synced ? null : <div className="grid-block shrink txtlabel error"><Translate content="footer.nosync" />&nbsp; &nbsp;</div>}
-                    {this.props.rpc_connection_status === "closed" ? <div className="grid-block shrink txtlabel error"><Translate content="footer.connection" />&nbsp; &nbsp;</div> : null}
+                    {this.props.synced ? null : <div className="grid-block shrink txtlabel error">Blockchain is out of sync, please wait until it's synchronized.. &nbsp; &nbsp;</div>}
+                    {this.props.rpc_connection_status === "closed" ? <div className="grid-block shrink txtlabel error">No Blockchain connection &nbsp; &nbsp;</div> : null}
                     {this.props.backup_recommended ? <span>
                         <div className="grid-block">
                             <a className="shrink txtlabel facolor-alert"
                                 data-tip="Please understand that you are responsible for making your own backup&hellip;"
                                 data-type="warning"
-                                onClick={this.onBackup.bind(this)}><Translate content="footer.backup" /></a>
+                                onClick={this.onBackup.bind(this)}>Backup Required</a>
                             &nbsp;&nbsp;
                         </div>
                     </span> : null}
                     {this.props.backup_brainkey_recommended ? <span>
                         <div className="grid-block">
-                            <a className="grid-block shrink txtlabel facolor-alert" onClick={this.onBackupBrainkey.bind(this)}><Translate content="footer.brainkey" /></a>
+                            <a className="grid-block shrink txtlabel facolor-alert" onClick={this.onBackupBrainkey.bind(this)}>Backup brainkey recommended</a>
                             &nbsp;&nbsp;
                         </div>
                     </span>:null}
@@ -81,23 +81,22 @@ class Footer extends React.Component {
     }
 
     onBackup() {
-        this.context.router.push("/wallet/backup/create");
+        this.context.history.pushState(null, "/wallet/backup/create");
     }
 
     onBackupBrainkey() {
-        this.context.router.push("/wallet/backup/brainkey");
+        this.context.history.pushState(null, "/wallet/backup/brainkey");
     }
 }
-Footer = BindToChainState(Footer, {keep_updating: true});
 
 class AltFooter extends Component {
 
     render() {
-        var wallet = WalletDb.getWallet();
+        var wallet = WalletDb.getWallet()
         return <AltContainer
             stores={[CachedPropertyStore, BlockchainStore, WalletDb]}
             inject ={{
-                backup_recommended: ()=>
+                backup_recommended: ()=> 
                     (wallet && ( ! wallet.backup_date || CachedPropertyStore.get("backup_recommended"))),
                 rpc_connection_status: ()=> BlockchainStore.getState().rpc_connection_status
                 // Disable notice for separate brainkey backup for now to keep things simple.  The binary wallet backup includes the brainkey...
@@ -108,7 +107,7 @@ class AltFooter extends Component {
                 // }
             }}
             ><Footer {...this.props}/>
-        </AltContainer>;
+        </AltContainer>
     }
 }
 
