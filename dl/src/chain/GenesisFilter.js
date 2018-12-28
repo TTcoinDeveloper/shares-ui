@@ -1,7 +1,7 @@
 import h from "common/hash"
 import config from "chain/config"
 import key_utils from "common/key_utils"
-
+/**
 var bts_genesiskeys_bloom_url = undefined
 try {
     var url = require("file?name=bts_genesiskeys_bloom_[sha1:hash:hex:7].dat!assets/bts_genesiskeys_bloom.dat")

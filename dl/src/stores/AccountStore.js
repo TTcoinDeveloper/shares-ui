@@ -89,75 +89,53 @@ class AccountStore extends BaseStore {
                 continue
             }
             if(account == null) {
-                console.log("WARN: non-chain account name in linkedAccounts", account_name)
+                console.log("... ChainStore.getAccount("+account_name+") == null")
                 continue
             }
-            var auth = this.getMyAuthorityForAccount(account)
-            if(auth === undefined) {
-                this.state.update = true
-                continue
-            } 
-            if(auth === "full") {
+            if(this.getMyAuthorityForAccount(account) === "full") {
                 accounts.push(account_name)
             }
         }
         return accounts.sort()
     }
     
+
     /**
         @todo "partial"
-        @return string "none", "full", "partial" or undefined (pending a chain store lookup)
+        @return string "none", "full", "partial"
     */
-    getMyAuthorityForAccount(account, recursion_count = 1) {
+    getMyAuthorityForAccount(account) {
+        return "full" // pending support for Addresses and Accounts
+    }
+
+    // Balance claims will still use this as a security precaution
+    getMyAuthorityForAccount_pubkeyonly(account) {
         if (! account) return undefined
-        
-        var owner_authority = account.get("owner")
-        var active_authority = account.get("active")
-        
-        var owner_pubkey_threshold = pubkeyThreshold(owner_authority)
-        if(owner_pubkey_threshold == "full") return "full"
-        var active_pubkey_threshold = pubkeyThreshold(active_authority)
-        if(active_pubkey_threshold == "full") return "full"
-        
-        var owner_address_threshold = addressThreshold(owner_authority)
-        if(owner_address_threshold == "full") return "full"
-        var active_address_threshold = addressThreshold(active_authority)
-        if(active_address_threshold == "full") return "full"
-        
-        var owner_account_threshold, active_account_threshold
-        if(recursion_count < 3) {
-            owner_account_threshold = this._accountThreshold(owner_authority, recursion_count)
-            if ( owner_account_threshold === undefined ) return undefined
-            if(owner_account_threshold == "full") return "full"
-            active_account_threshold = this._accountThreshold(active_authority, recursion_count)
-            if ( active_account_threshold === undefined ) return undefined
-            if(active_account_threshold == "full") return "full"
+        // @return 3 full, 2 partial, 0 none
+        function pubkeyThreshold(authority) {
+            var available = 0
+            var required = authority.get("weight_threshold")
+            for (let k of authority.get("key_auths")) {
+                if (PrivateKeyStore.hasKey(k.get(0))) {
+                    available += k.get(1)
+                }
+                if(available >= required) break
+            }
+            return available >= required ? 3 : available > 0 ? 2 : 0
         }
-        if(
-            owner_pubkey_threshold === "partial" || active_pubkey_threshold === "partial" ||
-            owner_address_threshold === "partial" || owner_address_threshold === "partial" ||
-            owner_account_threshold === "parital" || active_account_threshold === "partial"
-        ) return "partial"
+        var owner = pubkeyThreshold(account.get("owner"))
+        if(owner == 3) return "full"
+
+        var active = pubkeyThreshold(account.get("active"))
+        if(active == 3) return "full"
+
+        if(owner == 2 || active == 2) return "partial"
+
         return "none"
     }
-
-    _accountThreshold(authority, recursion_count) {
-        var account_auths = authority.get("account_auths")
-        if( ! account_auths.size ) return "none"
-        for (let a of account_auths)
-            // get all accounts in the queue for fetching
-            ChainStore.getAccount(a)
-        
-        for (let a of account_auths) {
-            var account = ChainStore.getAccount(a)
-            if(account === undefined) return undefined
-            return this.getMyAuthorityForAccount(account, ++recursion_count)
-        }
-    }
-
+    
     isMyAccount(account) {
         let authority = this.getMyAuthorityForAccount(account);
-        if( authority === undefined ) return undefined
         return authority === "partial" || authority === "full";
     }
     
