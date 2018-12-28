@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/cryptonomex/graphene_ui"
+    "url": "git:https://github.com/TTcoinDeveloper/ui.git"
   },
   "scripts": {
     "test": "NODE_ENV=test jest",
