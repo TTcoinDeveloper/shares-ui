@@ -1,0 +1,107 @@
+{
+  "name": "webgui",
+  "version": "0.0.1",
+  "description": "gui powered by react and graphene",
+  "homepage": "https://github.com/cryptonomex/graphene_ui",
+  "author": "Cryptonomex, Inc.",
+  "license": "LicenseRef-LICENSE",
+  "engines": {
+    "node": "0.12.2",
+    "npm": "2.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cryptonomex/graphene_ui"
+  },
+  "scripts": {
+    "test": "jest",
+    "start": "node server.js",
+    "build": "webpack --config conf/webpack-prod.js  --progress --profile --colors; echo 'copying to electron/build..'; cp -r dist/* ../electron/build/; echo 'done.'"
+  },
+  "dependencies": {
+    "alt": "~0.17.1",
+    "autoprefixer-loader": "^2.0.0",
+    "babel": "~5.8.21",
+    "babel-core": "~5.8.22",
+    "babel-loader": "~5.3.2",
+    "classnames": "^2.1.1",
+    "cookies-js": "^1.2.1",
+    "counterpart": "^0.16.7",
+    "css-loader": "^0.12.0",
+    "event-emitter": "^0.3.4",
+    "extract-text-webpack-plugin": "^0.8.0",
+    "file-loader": "^0.8.1",
+    "html-loader": "^0.3.0",
+    "immutable": "~3.7.2",
+    "indexeddbshim": "^2.0.4",
+    "intl": "^1.0.0",
+    "jdenticon": "git+https://github.com/cryptonomex/jdenticon.git",
+    "js-sha256": "^0.2.3",
+    "json-loader": "^0.5.1",
+    "keyboardjs": "^0.4.2",
+    "lodash": "^3.10.1",
+    "lzma": "2.1.6",
+    "node-fetch": "^1.3.1",
+    "node-sass": "^3.0.0",
+    "perfect-scrollbar": "^0.6.2",
+    "react": "0.13.3",
+    "react-foundation-apps": "git+http://github.com/valzav/react-foundation-apps.git",
+    "react-highcharts": "git+https://github.com/svk31/react-highcharts.git",
+    "react-hot-loader": "~1.2.7",
+    "react-interpolate-component": "^0.7.1",
+    "react-intl": "^1.2.0",
+    "react-json-inspector": "5.0.3",
+    "react-notification-system": "^0.1.11",
+    "react-router": "0.13.3",
+    "react-tools": "~0.13.2",
+    "react-tooltip": "^0.6.2",
+    "react-translate-component": "^0.9.0",
+    "remarkable-loader": "^0.1.0",
+    "sass-loader": "^1.0.1",
+    "style-loader": "^0.12.2",
+    "svg-inline-loader": "^0.1.0",
+    "svgo": "^0.5.1",
+    "svgo-loader": "^1.1.0",
+    "tcomb": "1.1.0",
+    "url-loader": "^0.5.6",
+    "webpack": "^1.9.6",
+    "webpack-dev-server": "^1.8.2",
+    "whatwg-fetch": "^0.9.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^3.1.1",
+    "babel-jest": "^5.2.0",
+    "clean-webpack-plugin": "^0.1.3",
+    "coffee-loader": "^0.7.2",
+    "eslint": "^0.20.0",
+    "eslint-plugin-react": "^2.2.0",
+    "jest-cli": "~0.4.1",
+    "script-loader": "^0.6.1"
+  },
+  "jest": {
+    "scriptPreprocessor": "<rootDir>/__tests__/jest-preprocessor.js",
+    "testPathDirs": [
+      "<rootDir>/__tests__"
+    ],
+    "unmockedModulePathPatterns": [
+      "<rootDir>/node_modules/react",
+      "<rootDir>/node_modules/tcomb",
+      "<rootDir>/node_modules/immutable"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "jsx",
+      "json",
+      "coffee"
+    ],
+    "testFileExtensions": [
+      "js",
+      "jsx"
+    ],
+    "testPathIgnorePatterns": [
+      "/jest-preprocessor.js",
+      "/node_modules/",
+      "/utils/"
+    ]
+  }
+}

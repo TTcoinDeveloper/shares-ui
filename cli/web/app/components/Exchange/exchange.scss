@@ -1,0 +1,378 @@
+$bid-color: #50D2C2;
+$ask-color: #E3745B;
+$call-color: #BBBF2B;
+
+.market-layout {
+  > .grid-block {
+    padding: 0.25rem 0.25rem 0.25rem 0.25rem !important;
+  }
+
+/*  .left-column-2 {
+    min-width: 15rem;
+  }
+
+  .right-column {
+    min-width: 15rem;
+  }*/
+}
+
+.market-content {
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+}
+
+[class*="block-grid-"] > li {
+
+    height: auto;
+
+    padding: 0 0.625em 1.25em;
+}
+
+td.orderHistoryBid {
+  > span.price-integer {
+    font-weight: bold;
+    color: $bid-color;
+  }
+
+  > span.price-decimal {
+    color: #e0e0e0;
+    font-size: 90%;
+    opacity: 0.6;
+
+  }
+}
+
+td.orderHistoryAsk {
+  > span.price-integer {
+    font-weight: bold;
+    color: $ask-color;
+  }
+
+  > span.price-decimal {
+    color: #e0e0e0;
+    font-size: 90%;
+    opacity: 0.6;
+  }
+}
+
+td.orderHistoryCall {
+  > span.price-integer {
+    font-weight: bold;
+    color: $call-color;
+  }
+
+  > span.price-decimal {
+    color: #e0e0e0;
+    font-size: 90%;
+    opacity: 0.6;
+  }
+}
+
+.order-table {
+	width: 100%;
+	> caption {
+		padding-bottom: 1.25rem;
+	}
+    > thead > tr > th {
+        font-size: 0.9rem;
+    }
+
+    > tbody > tr > td {
+        font-size: 0.75rem;
+        border: none;
+    }
+}
+
+.my-orders {
+  width: 48% !important;
+  display: inline-table;
+}
+
+p.order-table-title {
+	display: none;
+}
+
+
+.notification,
+.notification.success,
+.notification.info,
+.notification.warning,
+.notification.alert,
+.notification.cancel {
+	font-size: 0.75rem;
+}
+
+.backingWarning { color: yellow; }
+.backingError { color: red; }
+
+.buy-form {
+  padding-top: 0.25rem !important;
+  padding-left: 1rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.sell-form {
+  padding-top: 0.25rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 1rem !important;
+}
+
+.buySellButton {
+  float: right;
+  min-width: 4rem;
+}
+
+.buy {
+  background-color: $bid-color !important;
+}
+
+.sell {
+  background-color: $ask-color !important;
+}
+
+#market-charts {
+  > div > div.tabs {
+    margin-bottom: 0.25rem;
+
+    .tab-item {
+      padding-top: 0.1rem;
+    }
+  }
+
+}
+
+.left-order-book {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  table {
+    width: 100%;
+    th {
+      padding-top: 4px !important;
+      padding-bottom: 4px !important;
+    }
+  }
+  > .table-container {
+    flex-grow: 1;
+    width: 100%;
+    position: relative;
+  }
+  > .spread {
+    flex-shrink: 1;
+    width: 100%;
+    padding: 0.25rem 0 0.25rem 0;
+    border-top: 1px solid #777;
+    border-bottom: 1px solid #777;
+  }
+  .top-header {
+    border-top: 1px solid #777;
+  }
+  .bottom-header {
+    border-bottom: 1px solid #777;
+  }
+}
+
+tr.top-header, tr.bottom-header, tr.spread-row {
+  &:hover > td {
+    background-color: inherit !important;
+    cursor: auto !important;
+  }
+}
+
+.bid-total {
+  font-size: 90%;
+  position: absolute;
+  top: 5px;
+  left: 25px;
+  color: $bid-color;
+  z-index: 999;
+}
+
+.ask-total {
+  font-size: 90%;
+  position: absolute;
+  top: 5px;
+  right: 25px;
+  color: $ask-color;
+  z-index: 999;
+}
+
+.chart-label {
+  z-index: 5;
+  position: absolute;
+  right: 0;
+  font-size: 15px;
+  border: 1px black solid;
+  vertical-align: middle;
+}
+
+.buy-sell-info {
+  font-size: 90%;
+  margin-bottom: 5px;
+}
+
+
+
+a.order-cancel {
+  font-size: 80%;
+  letter-spacing: 2px;
+  padding-top: 0.01rem;
+  padding-bottom: 0.01rem;
+  margin: 0;
+}
+
+.stats {
+  overflow: visible;
+}
+
+.market-stats > li {
+  display: inline-block;
+  padding-right: 0.5rem;
+}
+
+.market-stats .stat {
+  text-align: left;
+  font-size: 12px;
+  overflow: hidden;
+  padding: 5px 0px;
+}
+
+.market-stats .stat .value {
+  font-size: 12px;
+  color: #000;
+  letter-spacing: normal;
+}
+
+.stats {
+  list-style: none;
+  overflow: hidden;
+  text-align: right;
+  margin: 0px;
+  padding: 0px;
+  min-height: 63px;
+}
+.stats .stat {
+  padding: 0 10px;
+  height: 100%;
+}
+.stats .stat:first-child {
+  border-left: none;
+}
+.stats .stat .value {
+  font-size: 120%;
+  color: #FFFFFF;
+  letter-spacing: 1px;
+}
+.stats .stat em {
+  color: #888888;
+  display: block;
+}
+
+.market-symbol {
+    font-weight: bold;
+    font-size: 110%;
+    padding-left: 1rem;
+    padding-right: 1.1rem;
+    padding-top: 1.3rem;
+}
+
+.button.bucket-button {
+  text-transform: none !important;
+  background-color: #616161 !important;
+  font-size: 0.75rem !important;
+}
+
+.active-bucket {
+  text-transform: none !important;
+  background-color: rgb(80, 210, 194) !important;
+  font-size: 0.75rem !important;
+}
+
+.buy-sell-row {
+  margin-bottom: 10px;
+}
+
+.bottom-row {
+  border-top: #A09F9F 1px dotted;
+  padding-top: 5px !important;
+}
+
+.buy-sell-label {
+    font-size: 90%;
+    line-height: 1.75rem;
+    height: 1.75rem;
+}
+
+.buy-sell-input {
+    height: 1.75rem;
+    line-height: 1.75rem;
+}
+
+.buy-sell-input > input {
+    margin: 0;
+    padding: 0;
+    height: 1.75rem;
+    text-align: right;
+    font-size: 90%;
+    padding-right: 0.4rem;
+}
+
+.buy-sell-box {
+    text-align: center;
+    background: grey;
+    height: 1.75rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    font-size: 75%;
+    padding: 0 0 0 5px;
+    min-width: 5rem;
+}
+
+.account-drop-down {
+  a.button {
+    background-color: transparent;
+    text-transform: none;
+    font-family: 'Roboto-Regular', arial, sans-serif;
+
+  }
+  a:active.button, a:hover.button {
+    background-color: transparent !important;
+  }
+}
+
+.borrow-button {
+  margin-top: 0.5rem;
+}
+
+.borrow-button-container {
+  padding-right: 1rem;
+}
+
+.order-change {
+  transition: all 3s ease;
+  background: #343434;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+.borrow-price-label {
+  display: inline-block;
+  min-width: 40%;
+}
+
+.borrow-price-final {
+  border-top: #A09F9F 1px dotted;
+  padding-top: 5px !important;
+}
+
+.borrow-price-feeds {
+  padding-bottom: 2px;
+}
