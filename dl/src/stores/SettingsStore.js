@@ -5,7 +5,7 @@ var Immutable = require("immutable");
 var _ =require("lodash");
 
 const STORAGE_KEY = "__graphene__";
-const CORE_ASSET = "BTS"; // Setting this to BTS to prevent loading issues when used with BTS chain which is the most usual case currently
+const CORE_ASSET = "MET"; // Setting this to BTS to prevent loading issues when used with BTS chain which is the most usual case currently
 
 var ls = typeof localStorage === "undefined" ? null : localStorage;
 
@@ -13,12 +13,16 @@ class SettingsStore {
     constructor() {
         this.exportPublicMethods({getSetting: this.getSetting.bind(this)});
 
-        this.settings = Immutable.Map({
+        this.defaultSettings = Immutable.Map({
             locale: "en",
-            connection: "wss://bitshares.openledger.info/ws",
-            faucet_address: "https://bitshares.openledger.info",
+            apiServer: "ws://localhost:8090",
+            faucet_address: "https://example.com",
             unit: CORE_ASSET,
-            showSettles: false
+            showSettles: false,
+            showAssetPercent: false,
+            walletLockTimeout: 60 * 10,
+            themes: "darkTheme",
+            disableChat: false
         });
 
         this.viewSettings =  Immutable.Map({
@@ -60,7 +64,7 @@ class SettingsStore {
                 "tr"
             ],
             connection: [
-                "wss://bitshares.openledger.info/ws"
+                "ws://localhost:8090"
             ],
             unit: [
                 CORE_ASSET,
