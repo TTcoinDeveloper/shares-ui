@@ -13,6 +13,8 @@ new WebpackDevServer(compiler, {
     historyApiFallback: true,
     quiet: false,
     stats: {colors: true},
+	host: '127.0.0.1',
+	disableHostCheck: true,
     port: 8080
 }).listen(8080, '0.0.0.0', function (err, result) {
     if (err) {
