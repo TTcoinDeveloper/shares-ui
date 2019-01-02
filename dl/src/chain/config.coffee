@@ -6,9 +6,9 @@ module.exports = _this =
     depositWithdrawDefaultActiveTab: 0
     networks:
         BitShares:
-            core_asset: "BTS"
-            address_prefix: "BTS"
-            chain_id: "4018d7844c78f6a6c41c6a552b898022310fc5dec06da467ee7905a8dad512c8"
+            core_asset: "MET"
+            address_prefix: "MET"
+            chain_id: "8c3612a4287c2c9b4e52d094760ae877b0525f94068027c49c4bae5949bfcc94"
         Muse:
             core_asset: "MUSE"
             address_prefix: "MUSE"
