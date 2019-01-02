@@ -22,7 +22,7 @@ class SettingsStore {
             showAssetPercent: false,
             walletLockTimeout: 60 * 10,
             themes: "darkTheme",
-            disableChat: false
+            disableChat: true
         });
 
         this.viewSettings =  Immutable.Map({
@@ -64,7 +64,7 @@ class SettingsStore {
                 "tr"
             ],
             connection: [
-                "ws://localhost:8090"
+                "wss://bitshares.openledger.info/ws"
             ],
             unit: [
                 CORE_ASSET,
